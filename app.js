@@ -100,10 +100,38 @@ notificationModal.setAttribute('aria-hidden', 'true');
 notificationModal.innerHTML = '<div class="modal-panel notification-panel"><div class="modal-header"><div><p class="eyebrow">Activité de votre espace</p><h2>Notifications</h2></div><button class="close-button notification-close" aria-label="Fermer les notifications">×</button></div><div class="notification-list"></div></div>';
 document.body.append(notificationModal);
 notificationModal.querySelector('.notification-close').addEventListener('click', () => closeModal(notificationModal));
-function renderNotifications() { const list = notificationModal.querySelector('.notification-list'); const userNotifications = notifications.filter(item => item.recipient === userNotificationKey()); const unread = userNotifications.filter(item => !item.read).length; notificationButton.hidden = !currentUser; document.querySelector('#notification-count').textContent = unread; document.querySelector('#notification-count').hidden = unread === 0; list.innerHTML = userNotifications.length ? userNotifications.slice().reverse().map(item => `<div class="notification-item ${item.read ? '' : 'unread'}"><strong>${item.message}</strong><small>${new Date(item.date).toLocaleString('fr-FR')}</small></div>`).join('') : '<p class="modal-muted">Aucune notification pour le moment.</p>'; }
+function renderNotifications() { const list = notificationModal.querySelector('.notification-list'); const userNotifications = notifications.filter(item => item.recipient === userNotificationKey()); const unread = userNotifications.filter(item => !item.read).length; notificationButton.hidden = !currentUser; document.querySelector('#notification-count').textContent = unread; document.querySelector('#notification-count').hidden = unread === 0; list.innerHTML = userNotifications.length ? userNotifications.slice().reverse().map(item => `<div class="notification-item ${item.read ? '' : 'unread'}" data-notification-id="${item.id}"><strong>${item.message}</strong><small>${new Date(item.date).toLocaleString('fr-FR')}</small></div>`).join('') : '<p class="modal-muted">Aucune notification pour le moment.</p>'; }
 notificationButton.addEventListener('click', () => { notifications.filter(item => item.recipient === userNotificationKey()).forEach(item => { item.read = true; }); localStorage.setItem('etokiana-notifications', JSON.stringify(notifications)); renderNotifications(); openModal(notificationModal); });
+
+// Clic sur une notification : on la marque comme lue et on ouvre directement
+// son contenu (suivi de commande si elle référence une commande, chat si
+// c'est un message, sinon un toast avec le message complet).
+notificationModal.querySelector('.notification-list').addEventListener('click', event => {
+  const item = event.target.closest('.notification-item');
+  if (!item) return;
+  const notification = notifications.find(entry => String(entry.id) === item.dataset.notificationId);
+  if (!notification) return;
+  notification.read = true;
+  localStorage.setItem('etokiana-notifications', JSON.stringify(notifications));
+  renderNotifications();
+  const orderMatch = notification.message.match(/#([A-Za-z0-9-]+)/);
+  const order = orderMatch && orders.find(entry => entry.id === orderMatch[1]);
+  if (order) { closeModal(notificationModal); return openOrderTracking(order); }
+  if (notification.message.includes('Nouveau message') && notification.actor) {
+    closeModal(notificationModal);
+    renderChatRecipients();
+    document.querySelector('#chat-recipient').value = notification.actor;
+    renderChatThread();
+    return openModal(chatModal);
+  }
+  showToast(notification.message);
+});
+
 let messages = JSON.parse(localStorage.getItem('etokiana-messages') || '[]');
 const quickReactions = ['👍', '❤️', '😂', '😮', '😢'];
+// Identifiant du message dont le sélecteur de réactions rapides est visible
+// (ouvert via un clic droit sur le message). null = aucun sélecteur visible.
+let openReactionPickerId = null;
 const chatButton = document.createElement('button');
 chatButton.className = 'chat-button';
 chatButton.type = 'button';
@@ -160,6 +188,7 @@ function renderChatThread() {
   thread.innerHTML = threadMessages.length ? threadMessages.map(message => {
     const mine = message.from === currentUser?.email;
     const reactionEntries = Object.entries(message.reactions || {}).filter(([, users]) => users.length);
+    const pickerVisible = String(message.id) === String(openReactionPickerId);
     return `<div class="chat-message ${mine ? 'mine' : 'theirs'}" data-message-id="${message.id}">
         <strong>${message.fromName}</strong>
         <p>${message.text}</p>
@@ -168,18 +197,35 @@ function renderChatThread() {
           ${mine ? `<small class="read-status ${message.read ? 'seen' : ''}">${message.read ? 'Vu' : 'Envoyé'}</small>` : ''}
         </div>
         ${reactionEntries.length ? `<div class="chat-reactions">${reactionEntries.map(([emoji, users]) => `<button type="button" class="chat-reaction ${users.includes(currentUser?.email) ? 'active' : ''}" data-react="${emoji}" data-message-id="${message.id}">${emoji} ${users.length}</button>`).join('')}</div>` : ''}
-        <div class="chat-reaction-picker">${quickReactions.map(emoji => `<button type="button" class="reaction-pick" data-react="${emoji}" data-message-id="${message.id}" aria-label="Réagir avec ${emoji}">${emoji}</button>`).join('')}</div>
+        <div class="chat-reaction-picker ${pickerVisible ? 'visible' : ''}">${quickReactions.map(emoji => `<button type="button" class="reaction-pick" data-react="${emoji}" data-message-id="${message.id}" aria-label="Réagir avec ${emoji}">${emoji}</button>`).join('')}</div>
       </div>`;
   }).join('') : '<p class="modal-muted">Aucun message dans cette conversation.</p>';
   updateChatBadge();
 }
 
-chatButton.addEventListener('click', () => { renderChatRecipients(); openModal(chatModal); });
+chatButton.addEventListener('click', () => { openReactionPickerId = null; renderChatRecipients(); openModal(chatModal); });
 document.querySelector('#chat-recipient').addEventListener('change', renderChatThread);
 document.querySelector('#chat-thread').addEventListener('click', event => {
   const reactButton = event.target.closest('[data-react]');
   if (!reactButton) return;
   toggleReaction(reactButton.dataset.messageId, reactButton.dataset.react);
+});
+// Clic droit sur un message : ouvre (ou ferme) son sélecteur de réactions
+// rapides, masqué par défaut.
+document.querySelector('#chat-thread').addEventListener('contextmenu', event => {
+  const messageEl = event.target.closest('.chat-message');
+  if (!messageEl) return;
+  event.preventDefault();
+  const messageId = messageEl.dataset.messageId;
+  openReactionPickerId = String(openReactionPickerId) === String(messageId) ? null : messageId;
+  renderChatThread();
+});
+// Un clic ailleurs qu'un message referme le sélecteur de réactions ouvert.
+document.addEventListener('click', event => {
+  if (openReactionPickerId && !event.target.closest('.chat-message')) {
+    openReactionPickerId = null;
+    if (chatModal.classList.contains('open')) renderChatThread();
+  }
 });
 document.querySelector('#chat-form').addEventListener('submit', event => { event.preventDefault(); const recipient = document.querySelector('#chat-recipient').value; const text = document.querySelector('#chat-message').value.trim(); if (!recipient || !text) return; const message = { id: Date.now(), from: currentUser.email, fromName: actorIdentity().name, to: recipient, text, date: new Date().toISOString(), read: false, reactions: {} }; messages.push(message); localStorage.setItem('etokiana-messages', JSON.stringify(messages)); addNotification(recipient, `Nouveau message : ${text}`); document.querySelector('#chat-message').value = ''; renderChatThread(); });
 window.addEventListener('storage', event => { if (event.key === 'etokiana-messages') { messages = JSON.parse(event.newValue || '[]'); if (chatModal.classList.contains('open')) renderChatThread(); else updateChatBadge(); } if (event.key === 'etokiana-notifications') { notifications = JSON.parse(event.newValue || '[]'); renderNotifications(); } });
