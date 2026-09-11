@@ -103,12 +103,13 @@ notificationModal.querySelector('.notification-close').addEventListener('click',
 function renderNotifications() { const list = notificationModal.querySelector('.notification-list'); const userNotifications = notifications.filter(item => item.recipient === userNotificationKey()); const unread = userNotifications.filter(item => !item.read).length; notificationButton.hidden = !currentUser; document.querySelector('#notification-count').textContent = unread; document.querySelector('#notification-count').hidden = unread === 0; list.innerHTML = userNotifications.length ? userNotifications.slice().reverse().map(item => `<div class="notification-item ${item.read ? '' : 'unread'}"><strong>${item.message}</strong><small>${new Date(item.date).toLocaleString('fr-FR')}</small></div>`).join('') : '<p class="modal-muted">Aucune notification pour le moment.</p>'; }
 notificationButton.addEventListener('click', () => { notifications.filter(item => item.recipient === userNotificationKey()).forEach(item => { item.read = true; }); localStorage.setItem('etokiana-notifications', JSON.stringify(notifications)); renderNotifications(); openModal(notificationModal); });
 let messages = JSON.parse(localStorage.getItem('etokiana-messages') || '[]');
+const quickReactions = ['👍', '❤️', '😂', '😮', '😢'];
 const chatButton = document.createElement('button');
 chatButton.className = 'chat-button';
 chatButton.type = 'button';
 chatButton.hidden = true;
 chatButton.title = 'Ouvrir le chat';
-chatButton.innerHTML = '<i class="bi bi-chat-dots-fill"></i><span>Chat</span>';
+chatButton.innerHTML = '<i class="bi bi-chat-dots-fill"></i><span>Chat</span><span class="chat-unread-count" id="chat-unread-count" hidden>0</span>';
 document.querySelector('#cart-toggle').after(chatButton);
 const chatModal = document.createElement('section');
 chatModal.className = 'modal chat-modal';
@@ -118,11 +119,70 @@ chatModal.innerHTML = '<div class="modal-panel chat-panel"><div class="modal-hea
 document.body.append(chatModal);
 chatModal.querySelector('.chat-close').addEventListener('click', () => closeModal(chatModal));
 function chatUsers() { const orderUsers = orders.map(order => ({ email: order.buyerId, name: order.buyerName, role: 'client' })); const users = [{ email: adminIdentity.email, name: adminIdentity.name, role: 'owner' }, { email: 'vendeur@etokiana.fr', name: 'Atelier Nomade', role: 'seller' }, { email: 'client@etokiana.fr', name: 'Alex Martin', role: 'client' }, ...JSON.parse(localStorage.getItem('etokiana-users') || '[]'), ...orderUsers]; return users.filter((user, index, list) => user.email && user.email !== currentUser?.email && list.findIndex(item => item.email === user.email) === index); }
-function renderChat() { const recipient = document.querySelector('#chat-recipient'); const users = chatUsers(); recipient.innerHTML = users.length ? users.map(user => `<option value="${user.email}">${user.name || user.email} · ${user.role === 'owner' ? 'Admin' : user.role === 'seller' ? 'Vendeur' : 'Client'}</option>`).join('') : '<option value="">Aucun contact disponible</option>'; const selected = recipient.value; const thread = document.querySelector('#chat-thread'); const threadMessages = messages.filter(message => (message.from === currentUser?.email && message.to === selected) || (message.to === currentUser?.email && message.from === selected)); thread.innerHTML = threadMessages.length ? threadMessages.map(message => `<div class="chat-message ${message.from === currentUser?.email ? 'mine' : ''}"><strong>${message.fromName}</strong><p>${message.text}</p><small>${new Date(message.date).toLocaleString('fr-FR')}</small></div>`).join('') : '<p class="modal-muted">Aucun message dans cette conversation.</p>'; }
-chatButton.addEventListener('click', () => { renderChat(); openModal(chatModal); });
-document.querySelector('#chat-recipient').addEventListener('change', renderChat);
-document.querySelector('#chat-form').addEventListener('submit', event => { event.preventDefault(); const recipient = document.querySelector('#chat-recipient').value; const text = document.querySelector('#chat-message').value.trim(); if (!recipient || !text) return; const message = { id: Date.now(), from: currentUser.email, fromName: actorIdentity().name, to: recipient, text, date: new Date().toISOString() }; messages.push(message); localStorage.setItem('etokiana-messages', JSON.stringify(messages)); addNotification(recipient, `Nouveau message : ${text}`); document.querySelector('#chat-message').value = ''; renderChat(); });
-window.addEventListener('storage', event => { if (event.key === 'etokiana-messages') { messages = JSON.parse(event.newValue || '[]'); if (chatModal.classList.contains('open')) renderChat(); } if (event.key === 'etokiana-notifications') { notifications = JSON.parse(event.newValue || '[]'); renderNotifications(); } });
+
+// --- Chat : construction de la liste des destinataires (à l'ouverture
+// uniquement) séparée de l'affichage du fil (à chaque changement, envoi,
+// réaction ou réception d'un message), pour ne jamais réinitialiser la
+// sélection du <select>.
+function unreadChatCount() { return messages.filter(message => message.to === currentUser?.email && !message.read).length; }
+function updateChatBadge() { const badge = document.querySelector('#chat-unread-count'); if (!badge) return; const count = unreadChatCount(); badge.textContent = count; badge.hidden = count === 0; }
+
+function renderChatRecipients() {
+  const recipient = document.querySelector('#chat-recipient');
+  const previousValue = recipient.value;
+  const users = chatUsers();
+  recipient.innerHTML = users.length ? users.map(user => `<option value="${user.email}">${user.name || user.email} · ${user.role === 'owner' ? 'Admin' : user.role === 'seller' ? 'Vendeur' : 'Client'}</option>`).join('') : '<option value="">Aucun contact disponible</option>';
+  if (users.some(user => user.email === previousValue)) recipient.value = previousValue;
+  renderChatThread();
+}
+
+function toggleReaction(messageId, emoji) {
+  const message = messages.find(item => String(item.id) === String(messageId));
+  if (!message || !currentUser?.email) return;
+  message.reactions = message.reactions || {};
+  const usersOnEmoji = message.reactions[emoji] || [];
+  message.reactions[emoji] = usersOnEmoji.includes(currentUser.email)
+    ? usersOnEmoji.filter(email => email !== currentUser.email)
+    : [...usersOnEmoji, currentUser.email];
+  if (!message.reactions[emoji].length) delete message.reactions[emoji];
+  localStorage.setItem('etokiana-messages', JSON.stringify(messages));
+  renderChatThread();
+}
+
+function renderChatThread() {
+  const recipient = document.querySelector('#chat-recipient');
+  const selected = recipient.value;
+  const thread = document.querySelector('#chat-thread');
+  const threadMessages = messages.filter(message => (message.from === currentUser?.email && message.to === selected) || (message.to === currentUser?.email && message.from === selected));
+  let changed = false;
+  threadMessages.forEach(message => { if (message.to === currentUser?.email && message.from === selected && !message.read) { message.read = true; changed = true; } });
+  if (changed) localStorage.setItem('etokiana-messages', JSON.stringify(messages));
+  thread.innerHTML = threadMessages.length ? threadMessages.map(message => {
+    const mine = message.from === currentUser?.email;
+    const reactionEntries = Object.entries(message.reactions || {}).filter(([, users]) => users.length);
+    return `<div class="chat-message ${mine ? 'mine' : 'theirs'}" data-message-id="${message.id}">
+        <strong>${message.fromName}</strong>
+        <p>${message.text}</p>
+        <div class="chat-message-footer">
+          <small>${new Date(message.date).toLocaleString('fr-FR')}</small>
+          ${mine ? `<small class="read-status ${message.read ? 'seen' : ''}">${message.read ? 'Vu' : 'Envoyé'}</small>` : ''}
+        </div>
+        ${reactionEntries.length ? `<div class="chat-reactions">${reactionEntries.map(([emoji, users]) => `<button type="button" class="chat-reaction ${users.includes(currentUser?.email) ? 'active' : ''}" data-react="${emoji}" data-message-id="${message.id}">${emoji} ${users.length}</button>`).join('')}</div>` : ''}
+        <div class="chat-reaction-picker">${quickReactions.map(emoji => `<button type="button" class="reaction-pick" data-react="${emoji}" data-message-id="${message.id}" aria-label="Réagir avec ${emoji}">${emoji}</button>`).join('')}</div>
+      </div>`;
+  }).join('') : '<p class="modal-muted">Aucun message dans cette conversation.</p>';
+  updateChatBadge();
+}
+
+chatButton.addEventListener('click', () => { renderChatRecipients(); openModal(chatModal); });
+document.querySelector('#chat-recipient').addEventListener('change', renderChatThread);
+document.querySelector('#chat-thread').addEventListener('click', event => {
+  const reactButton = event.target.closest('[data-react]');
+  if (!reactButton) return;
+  toggleReaction(reactButton.dataset.messageId, reactButton.dataset.react);
+});
+document.querySelector('#chat-form').addEventListener('submit', event => { event.preventDefault(); const recipient = document.querySelector('#chat-recipient').value; const text = document.querySelector('#chat-message').value.trim(); if (!recipient || !text) return; const message = { id: Date.now(), from: currentUser.email, fromName: actorIdentity().name, to: recipient, text, date: new Date().toISOString(), read: false, reactions: {} }; messages.push(message); localStorage.setItem('etokiana-messages', JSON.stringify(messages)); addNotification(recipient, `Nouveau message : ${text}`); document.querySelector('#chat-message').value = ''; renderChatThread(); });
+window.addEventListener('storage', event => { if (event.key === 'etokiana-messages') { messages = JSON.parse(event.newValue || '[]'); if (chatModal.classList.contains('open')) renderChatThread(); else updateChatBadge(); } if (event.key === 'etokiana-notifications') { notifications = JSON.parse(event.newValue || '[]'); renderNotifications(); } });
 const trackingModal = document.createElement('section');
 trackingModal.className = 'modal';
 trackingModal.id = 'tracking-modal';
@@ -197,7 +257,7 @@ function openModal(modal) { document.querySelectorAll('.modal.open').forEach(ope
 function closeModal(modal) { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
 function updatePaymentTotal() { renderShippingSummary(); }
 function openUserSpace() { if (!currentUser) return openModal(loginModal); if (['admin', 'owner', 'seller'].includes(currentUser.role)) { renderSellerAndOwnerViews(); addSellerOrderActions(); addOwnerOrderActions(); openModal(adminModal); } else { renderAccountData(); openModal(accountModal); } }
-function updateProfileButton() { const profileButton = document.querySelector('#profile-button'); const label = !currentUser ? 'Mon compte' : currentUser.role === 'seller' ? 'Ma boutique' : currentUser.role === 'owner' || currentUser.role === 'admin' ? 'E-Tokiana (admin)' : 'Mon compte'; profileButton.hidden = Boolean(currentUser); identityButton.hidden = !currentUser; chatButton.hidden = !currentUser; profileButton.setAttribute('aria-label', !currentUser ? 'Se connecter à mon compte' : `Ouvrir ${label}`); document.querySelector('#profile-label').textContent = label; if (currentUser) { const displayName = currentUser.role === 'owner' || currentUser.role === 'admin' ? adminIdentity.name : (currentUser.name || 'Utilisateur'); document.querySelector('#identity-label').textContent = displayName; document.querySelector('#identity-avatar').textContent = displayName.trim().charAt(0).toUpperCase(); } renderNotifications(); if (currentUser?.role === 'client') { document.querySelector('#account-title').textContent = `Bonjour, ${currentUser.name || 'Client'}.`; const address = document.querySelector('.account-card p'); if (address) address.innerHTML = currentUser.address ? `${currentUser.address}<br />${currentUser.phone || ''}` : 'Ajoutez votre adresse de livraison'; } if (currentUser?.role === 'seller') document.querySelector('#admin-title').textContent = `Boutique de ${currentUser.name || 'vendeur'}`; if (currentUser?.role === 'owner' || currentUser?.role === 'admin') document.querySelector('#admin-title').textContent = 'E-Tokiana (admin)'; }
+function updateProfileButton() { const profileButton = document.querySelector('#profile-button'); const label = !currentUser ? 'Mon compte' : currentUser.role === 'seller' ? 'Ma boutique' : currentUser.role === 'owner' || currentUser.role === 'admin' ? 'E-Tokiana (admin)' : 'Mon compte'; profileButton.hidden = Boolean(currentUser); identityButton.hidden = !currentUser; chatButton.hidden = !currentUser; profileButton.setAttribute('aria-label', !currentUser ? 'Se connecter à mon compte' : `Ouvrir ${label}`); document.querySelector('#profile-label').textContent = label; if (currentUser) { const displayName = currentUser.role === 'owner' || currentUser.role === 'admin' ? adminIdentity.name : (currentUser.name || 'Utilisateur'); document.querySelector('#identity-label').textContent = displayName; document.querySelector('#identity-avatar').textContent = displayName.trim().charAt(0).toUpperCase(); } renderNotifications(); updateChatBadge(); if (currentUser?.role === 'client') { document.querySelector('#account-title').textContent = `Bonjour, ${currentUser.name || 'Client'}.`; const address = document.querySelector('.account-card p'); if (address) address.innerHTML = currentUser.address ? `${currentUser.address}<br />${currentUser.phone || ''}` : 'Ajoutez votre adresse de livraison'; } if (currentUser?.role === 'seller') document.querySelector('#admin-title').textContent = `Boutique de ${currentUser.name || 'vendeur'}`; if (currentUser?.role === 'owner' || currentUser?.role === 'admin') document.querySelector('#admin-title').textContent = 'E-Tokiana (admin)'; }
 function renderAccountData() {
   const userOrders = orders.filter(order => order.buyerId === currentUser?.email);
   const orderView = document.querySelector('[data-view="orders"]');
