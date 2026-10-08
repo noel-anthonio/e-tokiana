@@ -1,0 +1,169 @@
+/* ==========================================================================
+   E-tokiana — panels.css  (à charger APRÈS chat.css)
+   Une seule famille visuelle pour les trois panneaux du site :
+   Notifications · Panier · Messagerie
+   - panneaux flottants (marge, coins arrondis, ombre commune)
+   - même en-tête : pastille d'icône verte + titre + fermeture
+   - mêmes cartes (coins 14 px, bordure fine, relief au survol)
+   - même bouton d'action principal vert
+   Valable pour tous les profils : visiteur, client, vendeur, admin.
+   ========================================================================== */
+
+/* ---------- En-tête commun ---------- */
+.panel-head { align-items: center; display: flex; gap: 12px; }
+.panel-head > div:not(.panel-ico) { flex: 1; min-width: 0; }
+.panel-head > .panel-ico {
+  align-items: center;
+  background: #e7efe8;
+  border-radius: 12px;
+  color: var(--green);
+  display: inline-flex;
+  flex: 0 0 40px;
+  font-size: 19px;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+.panel-head .close-button { flex: 0 0 auto; margin-left: auto; }
+.panel-head .eyebrow { letter-spacing: .08em; margin-bottom: 2px; }
+.panel-head h2 { font-size: 22px; letter-spacing: -.02em; line-height: 1.15; }
+
+/* ---------- Boutons de la barre de navigation : cloche et messages ---------- */
+.notification-button, .chat-button {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--ink);
+  height: 40px;
+  padding: 0;
+  width: 40px;
+}
+.notification-button .utility-label, .chat-button .utility-label { display: none; }
+.notification-button:hover, .chat-button:hover { background: #e7efe8; border-color: var(--green); color: var(--green); }
+.notification-icon, .chat-button-icon { color: var(--green); font-size: 17px; }
+.notification-count, .chat-unread-count { right: -4px; top: -4px; }
+
+/* ---------- Panneau Notifications : tiroir flottant ---------- */
+.modal.notification-modal { padding: 12px; }
+.modal.notification-modal .notification-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-l);
+  height: calc(100vh - 24px);
+  max-width: 420px;
+  transform: translateX(calc(100% + 24px));
+}
+.modal.notification-modal.open .notification-panel { transform: none; }
+.notif-panel > .modal-header { padding: 18px 20px 14px; }
+.notif-panel > .modal-header .eyebrow { display: none; }
+.notif-panel > .modal-header h2 { font-size: 22px; }
+
+.notif-toolbar { align-items: center; padding: 12px 20px; }
+.notif-actions { align-items: center; display: flex; flex: 0 0 auto; gap: 2px; }
+.notif-readall {
+  align-items: center;
+  border-radius: 999px;
+  color: var(--green);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+.notif-readall[hidden] { display: none; }
+.notif-readall:hover { background: #e7efe8; }
+.notif-items { padding: 0 12px 20px; scrollbar-width: thin; }
+.notif-day h4 { background: var(--white); margin: 8px 6px 4px; padding: 8px 4px 6px; position: sticky; top: 0; z-index: 1; }
+.notif { border: 1px solid transparent; border-radius: 14px; padding: 12px 10px; transition: background .15s, border-color .15s, box-shadow .15s; }
+.notif:hover { background: var(--white); border-color: var(--line); box-shadow: var(--shadow-s); }
+.notif.is-new { background: #fff7f2; }
+.notif.is-new:hover { background: #fff7f2; }
+.notif-ico { border-radius: 12px; }
+.notif-body p {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  display: -webkit-box;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.notif-cta { align-items: center; color: var(--green); display: inline-flex; font-size: 12px; font-weight: 600; gap: 4px; margin-top: 6px; }
+.notif-cta i { transition: transform .15s var(--ease); }
+.notif:hover .notif-cta i { transform: translateX(3px); }
+
+/* ---------- Panier : tiroir flottant ---------- */
+.cart-drawer {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  bottom: 12px;
+  max-width: 420px;
+  padding: 20px 18px 18px;
+  right: 12px;
+  top: 12px;
+  transform: translateX(calc(100% + 24px));
+  width: calc(100% - 24px);
+}
+.cart-drawer.open { transform: none; }
+.drawer-header { padding-bottom: 16px; }
+.drawer-header .eyebrow { margin-bottom: 2px; text-transform: none; }
+.drawer-header h2 { align-items: center; display: flex; gap: 8px; }
+.drawer-header .cart-count { margin-left: 0; vertical-align: baseline; }
+
+.cart-items { padding: 14px 2px 6px; scrollbar-width: thin; }
+.cart-item {
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  gap: 12px;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  margin-bottom: 10px;
+  padding: 10px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.cart-item:hover { background: var(--white); border-color: #c9c1b7; box-shadow: var(--shadow-s); }
+.cart-item img { border-radius: 10px; height: 88px; width: 72px; }
+.cart-item > :last-child { align-items: flex-end; align-self: stretch; display: flex; flex-direction: column; gap: 8px; justify-content: space-between; }
+.cart-item-name { font-size: 14px; font-weight: 600; line-height: 1.25; margin: 0 0 4px; }
+.cart-item-detail { font-family: var(--sans); font-size: 12px; letter-spacing: 0; text-transform: none; }
+.cart-item-price { font-size: 14px; font-weight: 700; text-align: right; }
+.quantity-control { background: var(--paper); border: 0; border-radius: 999px; gap: 4px; margin-top: 10px; padding: 3px; }
+.quantity-control button { background: var(--white); border-radius: 50%; box-shadow: var(--shadow-s); font-size: 15px; height: 26px; width: 26px; }
+.quantity-control span { font-family: var(--sans); font-size: 13px; font-weight: 700; min-width: 22px; text-align: center; }
+.remove-item { border-radius: 50%; font-size: 15px; height: 30px; width: 30px; }
+.remove-item:hover { background: #fdecea; }
+
+.cart-empty { font-family: var(--sans); font-size: 14px; letter-spacing: 0; line-height: 1.5; padding: 64px 20px; text-transform: none; }
+.cart-empty::before { content: '🛍️'; display: block; font-size: 44px; line-height: 1; margin-bottom: 12px; }
+
+.free-shipping { background: #f4f1ea; border: 1px solid var(--line); border-radius: 14px; margin-bottom: 12px; padding: 12px 14px; }
+.free-shipping .bar { background: #e3ddd2; height: 8px; }
+.free-shipping .bar i { background: linear-gradient(90deg, #00a050, var(--green)); }
+.free-shipping.done { background: #e7efe8; border-color: #bcd6c3; }
+
+.cart-footer { border-top: 1px solid var(--line); box-shadow: 0 -10px 18px -16px rgba(23, 23, 23, .4); padding-top: 16px; }
+.cart-footer > div { font-size: 14px; }
+.cart-footer #cart-total { font-size: 20px; }
+.cart-footer .checkout-button { background: var(--green); border-radius: 14px; font-size: 14px; min-height: 52px; }
+.cart-footer .checkout-button:hover { background: var(--green-deep); }
+.cart-footer .checkout-button > i { color: var(--white); }
+.cart-footer > p { font-family: var(--sans); font-size: 12px; letter-spacing: 0; }
+
+/* ---------- Messagerie : même en-tête que les autres panneaux ---------- */
+.chat-panel.msgr > .modal-header.panel-head > .panel-ico { flex-basis: 36px; height: 36px; width: 36px; }
+
+/* ---------- Toasts ---------- */
+.toast { border-radius: 14px; line-height: 1.4; max-width: min(420px, calc(100vw - 32px)); text-align: center; }
+
+/* ---------- Mobile : panneaux plein écran ---------- */
+@media (max-width: 800px) {
+  .modal.notification-modal { padding: 0; }
+  .modal.notification-modal .notification-panel { border: 0; border-radius: 0; height: 100dvh; max-width: 100%; transform: translateX(105%); }
+  .modal.notification-modal.open .notification-panel { transform: none; }
+  .cart-drawer { border: 0; border-radius: 0; bottom: 0; max-width: 100%; right: 0; top: 0; transform: translateX(105%); width: 100%; }
+  .cart-drawer.open { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notif, .cart-item, .notif-cta i { transition: none; }
+}
