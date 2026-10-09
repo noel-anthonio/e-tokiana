@@ -1,17 +1,14 @@
 /* ==========================================================================
-   E-tokiana — chat.js   (à charger APRÈS features.js)
-   Complète chat.css sans toucher à app.js ni à features.js :
-   - regroupe les bulles consécutives d'un même expéditeur
-   - séparateurs de jour (« Aujourd'hui », « Hier », …)
-   - réactions : barre rapide au survol + bouton « + » pour tout afficher
-   - pièces jointes : trombone, glisser-déposer, collage, aperçu avant envoi,
-     image toujours affichée dans la bulle, aperçu plein écran
-   - sélecteur d'émojis, bouton « retour en bas », bouton d'envoi qui s'active
+   E-tokiana — chat.js  v2   (à charger APRÈS features.js)
+   Remplace l'ancien chat.js. Compatible avec chat.css + chat-actions.css.
 
-   Pièces jointes : le message envoyé par app.js reste du texte ; on y ajoute
-   un repère ⟦pj:identifiants⟧ et les fichiers sont gardés dans localStorage
-   (« etokiana-attachments »). Le repère — ou, à défaut, l'identifiant seul —
-   est remplacé à l'affichage par la pièce jointe, et masqué dans les aperçus.
+   Nouveautés v2
+   - Pièces jointes : elles sont désormais rattachées au message (champ « att »)
+     au lieu d'être cachées dans le texte → plus jamais de « ⟦pj:…⟧ » visible.
+     Les anciens messages qui contiennent ce repère sont convertis au chargement.
+   - Actions sur un message (bouton « ⋯ ») : Modifier, Transférer, Copier,
+     Supprimer. Un message modifié affiche « modifié », un message supprimé
+     laisse une trace « Message supprimé », un transfert affiche « Transféré ».
    ========================================================================== */
 (() => {
   'use strict';
@@ -21,15 +18,17 @@
   modal.classList.add('chat-modal');
 
   const ATT_KEY = 'etokiana-attachments';
+  const MSG_KEY = 'etokiana-messages';
   const MAX_FILES = 4;                 // pièces jointes par message
   const MAX_FILE = 1.5 * 1024 * 1024;  // fichiers non réduits (octets)
   const MAX_STORED = 80;               // pièces conservées au total
-  const TOKEN = /\s*⟦pj:([a-z0-9,]+)⟧/;
+  const TOKEN = /\s*⟦pj:([a-z0-9,]+)⟧/;                // ancien format (migration)
   const STRIP = /\s*⟦[^⟧]*(?:⟧|$)/g;
   const LOOKS_LIKE_ID = /a[a-z0-9]{10,13}/;
   const EMOJIS = ['😀', '😂', '😊', '😍', '😉', '😅', '🤔', '😮', '😢', '👍', '👌', '🙏', '👏', '🙌', '🤝', '👋', '❤️', '🔥', '🎉', '⭐', '✅', '📦', '🚚', '💳'];
 
   let pending = [];
+  let sending = null;
   let strip = null;
   let emojiPanel = null;
   let jumpButton = null;
@@ -41,8 +40,16 @@
     if (html !== undefined) element.innerHTML = html;
     return element;
   };
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const toast = message => { if (typeof showToast === 'function') showToast(message); };
   const fmtSize = n => n < 1024 ? `${n} o` : n < 1048576 ? `${Math.round(n / 1024)} Ko` : `${(n / 1048576).toFixed(1)} Mo`;
+  const decode = html => { const box = document.createElement('textarea'); box.innerHTML = html; return box.value; };
+  const roleLabel = role => ({ owner: 'Admin', admin: 'Admin', seller: 'Vendeur' }[role] || 'Client');
+  const roleClass = role => ['owner', 'admin'].includes(role) ? 'owner' : role === 'seller' ? 'seller' : 'client';
+  const initialsOf = name => {
+    const parts = String(name || 'U').trim().split(/\s+/).filter(Boolean);
+    return (parts.length > 1 ? parts[0][0] + parts.at(-1)[0] : (parts[0] || 'U').slice(0, 2)).toLocaleUpperCase('fr-FR');
+  };
 
   // Lecture du stockage avec cache (évite de relire plusieurs Mo à chaque mise à jour)
   let attRaw = null;
@@ -55,6 +62,7 @@
     }
     return attCache;
   };
+  const saveMessages = () => localStorage.setItem(MSG_KEY, JSON.stringify(messages));
 
   const isImage = a => String(a.type).startsWith('image/');
   const iconFor = a => {
@@ -66,10 +74,12 @@
     if (/\.zip$/.test(name)) return 'bi-file-earmark-zip';
     return 'bi-file-earmark';
   };
-  const labelFor = list => list.length > 1 ? `📎 ${list.length} pièces jointes` : isImage(list[0]) ? '📎 Photo' : '📎 Fichier';
+  const labelFor = list => !list.length ? '📎 Pièce jointe' : list.length > 1 ? `📎 ${list.length} pièces jointes` : isImage(list[0]) ? '📎 Photo' : '📎 Fichier';
+  const labelForIds = ids => labelFor(ids.map(id => readAtt()[id]).filter(Boolean));
+  const isAutoLabel = text => !text || text.trim().startsWith('📎');
 
   /* ---------------------------------------------------------------- */
-  /* Nettoyage des textes (repère technique, identifiant seul)          */
+  /* Nettoyage des textes (anciens repères, identifiant seul)           */
   /* ---------------------------------------------------------------- */
   const knownIds = text => LOOKS_LIKE_ID.test(text) ? Object.keys(readAtt()).filter(id => text.includes(id)) : [];
   const tidy = (text, ids) => {
@@ -85,12 +95,44 @@
     return result || (ids.length ? '📎 Pièce jointe' : text);
   };
 
-  // Les toasts d'app.js ne doivent jamais afficher d'identifiant
+  // Les toasts d'app.js ne doivent jamais afficher de repère technique
   if (typeof window.showToast === 'function' && !window.showToast.__clean) {
     const original = window.showToast;
     const wrapped = (message, ...rest) => original(typeof message === 'string' ? cleanPreview(message) : message, ...rest);
     wrapped.__clean = true;
     window.showToast = wrapped;
+  }
+
+  // Migration : anciens messages / notifications contenant « ⟦pj:…⟧ »
+  function migrateLegacy() {
+    let changedMessages = false;
+    if (typeof messages !== 'undefined') {
+      messages.forEach(m => {
+        const match = String(m.text || '').match(TOKEN);
+        if (!match) return;
+        m.att = match[1].split(',');
+        m.text = tidy(m.text, m.att) || labelForIds(m.att);
+        changedMessages = true;
+      });
+      if (changedMessages) saveMessages();
+    }
+    if (typeof notifications !== 'undefined') {
+      let changed = false;
+      notifications.forEach(n => {
+        if (String(n.message || '').includes('⟦')) { n.message = tidy(n.message, []); changed = true; }
+      });
+      if (changed) localStorage.setItem('etokiana-notifications', JSON.stringify(notifications));
+    }
+  }
+  migrateLegacy();
+
+  const messageOf = bubble => (typeof messages !== 'undefined' ? messages.find(m => String(m.id) === bubble.dataset.messageId) : null) || null;
+
+  function rerender(keepScroll = true) {
+    const thread = modal.querySelector('#chat-thread');
+    const top = thread ? thread.scrollTop : 0;
+    renderChatThread();
+    if (keepScroll && thread) requestAnimationFrame(() => { thread.scrollTop = top; updateJump(); });
   }
 
   /* ---------------------------------------------------------------- */
@@ -180,6 +222,48 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* Envoi : les écouteurs sont posés sur la fenêtre (ancêtre du formulaire),
+     donc toujours exécutés AVANT (capture) et APRÈS (bulle) app.js.        */
+  /* ---------------------------------------------------------------- */
+  modal.addEventListener('submit', event => {
+    if (event.target.id !== 'chat-form') return;
+    sending = null;
+    if (!pending.length) return;
+    const input = modal.querySelector('#chat-message');
+    const store = { ...readAtt() };
+    pending.forEach(a => { store[a.id] = a; });
+    const keys = Object.keys(store);
+    if (keys.length > MAX_STORED) keys.slice(0, keys.length - MAX_STORED).forEach(key => delete store[key]);
+    try { localStorage.setItem(ATT_KEY, JSON.stringify(store)); }
+    catch {
+      event.preventDefault();
+      event.stopPropagation();
+      toast('Espace de stockage plein : retirez une pièce jointe ou choisissez une image plus légère.');
+      return;
+    }
+    sending = { items: pending.slice(), ids: pending.map(a => a.id), before: messages.length, original: input.value };
+    input.value = input.value.trim() || labelFor(sending.items);   // app.js refuse un texte vide
+    pending = [];
+    renderPending();
+  }, true);
+
+  modal.addEventListener('submit', event => {
+    if (event.target.id !== 'chat-form' || !sending) return;
+    const job = sending;
+    sending = null;
+    const last = messages.at(-1);
+    if (messages.length > job.before && last?.from === currentUser?.email) {
+      last.att = job.ids;                      // la pièce jointe fait partie du message
+      saveMessages();
+      renderChatThread();
+    } else {                                   // l'envoi n'a pas eu lieu : on restitue tout
+      pending = job.items;
+      modal.querySelector('#chat-message').value = job.original;
+      renderPending();
+    }
+  });
+
+  /* ---------------------------------------------------------------- */
   /* Barre de saisie : trombone, émojis, zone de dépôt, retour en bas    */
   /* ---------------------------------------------------------------- */
   function ensureTools() {
@@ -252,26 +336,6 @@
       const files = [...(event.clipboardData?.files || [])];
       if (files.length) { event.preventDefault(); addFiles(files); }
     });
-
-    // Envoi : on ajoute le repère de pièce jointe au texte avant qu'app.js ne le lise
-    form.addEventListener('submit', event => {
-      if (!pending.length) return;
-      const store = { ...readAtt() };
-      pending.forEach(a => { store[a.id] = a; });
-      const keys = Object.keys(store);
-      if (keys.length > MAX_STORED) keys.slice(0, keys.length - MAX_STORED).forEach(key => delete store[key]);
-      try { localStorage.setItem(ATT_KEY, JSON.stringify(store)); }
-      catch {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        toast('Espace de stockage plein : retirez une pièce jointe ou choisissez une image plus légère.');
-        return;
-      }
-      const text = input.value.trim() || labelFor(pending);
-      input.value = `${text} ⟦pj:${pending.map(a => a.id).join(',')}⟧`;
-      pending = [];
-      renderPending();
-    }, true);
     updateSend();
   }
 
@@ -322,24 +386,28 @@
     return button;
   }
 
-  function renderAttachments(message) {
-    const text = message.querySelector('p');
-    if (!text) return;
-    const raw = text.textContent;
-    const match = raw.match(TOKEN);
-    const ids = match ? match[1].split(',') : knownIds(raw);   // repli : identifiant affiché seul
+  function renderAttachments(bubble, m) {
+    if (bubble.querySelector(':scope > .msg-att')) return;
+    const text = bubble.querySelector(':scope > p');
+    let ids = Array.isArray(m?.att) ? m.att : [];
+    let caption = text ? text.textContent.trim() : '';
+    if (!ids.length && text) {                       // repli : ancien repère encore à l'écran
+      const raw = text.textContent;
+      const match = raw.match(TOKEN);
+      ids = match ? match[1].split(',') : knownIds(raw);
+      if (ids.length) caption = tidy(raw, ids);
+    }
     if (!ids.length) return;
     const store = readAtt();
     const items = ids.map(id => store[id]);
-    const caption = tidy(raw, ids);
-    const auto = !caption || caption.startsWith('📎');           // libellé généré : on ne l'affiche pas
+    const auto = isAutoLabel(caption);               // libellé généré : on ne l'affiche pas
     const wrap = h('div', 'msg-att');
     items.forEach(a => wrap.append(buildAttachment(a)));
-    message.insertBefore(wrap, text);
-    if (auto) text.remove(); else text.textContent = caption;
-    message.classList.add('has-att');
-    message.classList.toggle('att-only', auto);
-    message.classList.toggle('att-media', items.length > 0 && items.every(a => a && isImage(a)));
+    bubble.insertBefore(wrap, text || bubble.querySelector(':scope > .chat-message-footer'));
+    if (text) { if (auto) text.remove(); else text.textContent = caption; }
+    bubble.classList.add('has-att');
+    bubble.classList.toggle('att-only', auto);
+    bubble.classList.toggle('att-media', items.length > 0 && items.every(a => a && isImage(a)));
   }
 
   function openLightbox(button) {
@@ -364,6 +432,211 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* Actions sur un message : modifier, supprimer, transférer, copier    */
+  /* ---------------------------------------------------------------- */
+  const MENU_ITEMS = {
+    edit: ['pencil', 'Modifier'],
+    forward: ['forward', 'Transférer'],
+    copy: ['clipboard', 'Copier'],
+    delete: ['trash3', 'Supprimer']
+  };
+
+  function addTools(bubble, m) {
+    if (!m || bubble.querySelector(':scope > .chat-message-tools')) return;
+    const mine = m.from === currentUser?.email;
+    const actions = [];
+    if (mine) actions.push('edit');
+    actions.push('forward');
+    if (bubble.querySelector(':scope > p')) actions.push('copy');
+    if (mine) actions.push('delete');
+    const tools = h('div', 'chat-message-tools');
+    tools.innerHTML = `<button type="button" class="chat-message-more" aria-haspopup="menu" aria-expanded="false" aria-label="Actions du message"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
+      <div class="chat-message-menu" role="menu" hidden>${actions.map(action => `<button type="button" role="menuitem" data-message-action="${action}"><i class="bi bi-${MENU_ITEMS[action][0]}" aria-hidden="true"></i>${MENU_ITEMS[action][1]}</button>`).join('')}</div>`;
+    bubble.append(tools);
+  }
+
+  function closeMenus() {
+    modal.querySelectorAll('.chat-message-menu:not([hidden])').forEach(menu => {
+      menu.hidden = true;
+      menu.closest('.chat-message-tools')?.classList.remove('open');
+      menu.closest('.chat-message-tools')?.querySelector('.chat-message-more')?.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function toggleMenu(button) {
+    const tools = button.closest('.chat-message-tools');
+    const menu = tools.querySelector('.chat-message-menu');
+    const willOpen = menu.hidden;
+    closeMenus();
+    if (!willOpen) return;
+    menu.hidden = false;
+    tools.classList.add('open');
+    button.setAttribute('aria-expanded', 'true');
+    menu.classList.remove('up');
+    const thread = modal.querySelector('#chat-thread');
+    if (menu.getBoundingClientRect().bottom > thread.getBoundingClientRect().bottom - 4) menu.classList.add('up');   // pas assez de place dessous
+  }
+
+  function markDeleted(bubble) {
+    if (bubble.classList.contains('is-deleted')) return;
+    bubble.classList.add('is-deleted');
+    bubble.classList.remove('has-att', 'att-only', 'att-media');
+    bubble.querySelectorAll(':scope > .msg-att, :scope > .chat-reactions, :scope > .chat-reaction-picker, :scope > .msg-react-btn, :scope > .chat-message-tools, :scope > .chat-fwd').forEach(node => node.remove());
+    let text = bubble.querySelector(':scope > p');
+    if (!text) { text = h('p'); bubble.insertBefore(text, bubble.querySelector(':scope > .chat-message-footer')); }
+    text.innerHTML = '<i class="bi bi-slash-circle" aria-hidden="true"></i> Message supprimé';
+  }
+
+  function addMarkers(bubble, m) {
+    if (m?.fwd && !bubble.querySelector(':scope > .chat-fwd')) bubble.prepend(h('div', 'chat-fwd', '<i class="bi bi-forward-fill" aria-hidden="true"></i> Transféré'));
+    const footer = bubble.querySelector(':scope > .chat-message-footer');
+    if (m?.edited && footer && !footer.querySelector('.chat-edited')) {
+      const label = h('span', 'chat-edited', 'modifié');
+      label.title = `Modifié le ${new Date(m.edited).toLocaleString('fr-FR')}`;
+      footer.append(label);
+    }
+  }
+
+  function startEdit(bubble, m) {
+    if (bubble.querySelector('.chat-edit')) return;
+    const text = bubble.querySelector(':scope > p');
+    const original = decode(m.text);
+    const current = m.att?.length && isAutoLabel(original) ? '' : original;
+    const box = h('div', 'chat-edit');
+    const field = h('textarea', 'chat-edit-input');
+    field.value = current;
+    field.rows = 2;
+    field.maxLength = 1000;
+    field.setAttribute('aria-label', 'Modifier le message');
+    box.append(field, h('div', 'chat-edit-actions', '<button type="button" class="chat-edit-cancel">Annuler</button><button type="button" class="chat-edit-save">Enregistrer</button>'));
+    if (text) text.replaceWith(box); else bubble.insertBefore(box, bubble.querySelector(':scope > .chat-message-footer'));
+    bubble.classList.add('is-editing');
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
+  }
+
+  function saveEdit(bubble) {
+    const m = messageOf(bubble);
+    const field = bubble.querySelector('.chat-edit-input');
+    if (!m || !field) return;
+    let value = field.value.trim();
+    if (!value) {
+      if (!m.att?.length) { toast('Un message ne peut pas être vide.'); return; }
+      value = labelForIds(m.att);
+    }
+    const safe = value.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (safe !== m.text) {
+      m.text = safe;
+      m.edited = new Date().toISOString();
+      saveMessages();
+    }
+    rerender();
+  }
+
+  function deleteMessage(m) {
+    if (!window.confirm('Supprimer ce message pour tous ?')) return;
+    m.deleted = true;
+    m.text = 'Message supprimé';
+    m.reactions = {};
+    delete m.att;
+    delete m.fwd;
+    saveMessages();
+    rerender();
+  }
+
+  function copyMessage(bubble) {
+    const text = bubble.querySelector(':scope > p')?.textContent.trim();
+    if (!text) return;
+    const done = () => toast('Message copié');
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => toast('Copie impossible.'));
+    else {
+      const area = h('textarea');
+      area.value = text;
+      document.body.append(area);
+      area.select();
+      try { document.execCommand('copy'); done(); } catch { toast('Copie impossible.'); }
+      area.remove();
+    }
+  }
+
+  function openForward(m) {
+    document.querySelector('.chat-forward')?.remove();
+    const contacts = typeof chatUsers === 'function' ? chatUsers() : [];
+    const selected = new Set();
+    const box = h('div', 'chat-forward');
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', 'Transférer le message');
+    box.innerHTML = `<div class="chat-forward-panel">
+      <header><strong>Transférer le message</strong><button type="button" class="chat-forward-close" aria-label="Fermer"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
+      <div class="chat-forward-preview"><i class="bi bi-forward-fill" aria-hidden="true"></i><span></span></div>
+      <div class="msgr-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" placeholder="Rechercher un contact" autocomplete="off" /></div>
+      <div class="chat-forward-list"></div>
+      <footer><button type="button" class="space-mini primary chat-forward-send" disabled><i class="bi bi-send-fill" aria-hidden="true"></i><span>Transférer</span></button></footer>
+    </div>`;
+    box.querySelector('.chat-forward-preview span').textContent = decode(m.text).slice(0, 90);
+    const list = box.querySelector('.chat-forward-list');
+    const send = box.querySelector('.chat-forward-send');
+    const search = box.querySelector('input');
+
+    const draw = () => {
+      const query = search.value.trim().toLowerCase();
+      const rows = contacts.filter(user => !query || `${user.name || ''} ${user.email}`.toLowerCase().includes(query));
+      list.innerHTML = rows.length ? rows.map(user => {
+        const on = selected.has(user.email);
+        return `<button type="button" class="fw-contact ${on ? 'selected' : ''}" data-email="${esc(user.email)}" aria-pressed="${on}"><span class="space-avatar mini ${roleClass(user.role)}">${esc(initialsOf(user.name || user.email))}</span><span class="mc-main"><strong>${esc(user.name || user.email)}</strong><small>${roleLabel(user.role)}</small></span><i class="bi ${on ? 'bi-check-circle-fill' : 'bi-circle'}" aria-hidden="true"></i></button>`;
+      }).join('') : '<p class="modal-muted msgr-none">Aucun contact trouvé.</p>';
+      send.disabled = selected.size === 0;
+      send.querySelector('span').textContent = selected.size > 1 ? `Transférer à ${selected.size} contacts` : 'Transférer';
+    };
+
+    list.addEventListener('click', event => {
+      const contact = event.target.closest('[data-email]');
+      if (!contact) return;
+      const email = contact.dataset.email;
+      if (selected.has(email)) selected.delete(email); else selected.add(email);
+      draw();
+    });
+    search.addEventListener('input', draw);
+    box.addEventListener('click', event => { if (event.target === box || event.target.closest('.chat-forward-close')) box.remove(); });
+    send.addEventListener('click', () => {
+      if (!selected.size || !currentUser) return;
+      const sender = typeof actorIdentity === 'function' ? actorIdentity().name : (currentUser.name || currentUser.email);
+      const preview = decode(m.text);
+      let index = 0;
+      selected.forEach(email => {
+        const copy = { id: Date.now() + index++, from: currentUser.email, fromName: sender, to: email, text: m.text, date: new Date().toISOString(), read: false, reactions: {}, fwd: true };
+        if (m.att?.length) copy.att = [...m.att];
+        messages.push(copy);
+        if (typeof addNotification === 'function') addNotification(email, `Nouveau message : ${preview}`);
+      });
+      saveMessages();
+      if (typeof renderNotifications === 'function') renderNotifications();
+      box.remove();
+      renderChatThread();
+      toast(selected.size > 1 ? `Message transféré à ${selected.size} contacts` : `Message transféré à ${contacts.find(user => selected.has(user.email))?.name || 'votre contact'}`);
+    });
+
+    document.body.append(box);
+    draw();
+    search.focus();
+  }
+
+  function runAction(button) {
+    const bubble = button.closest('.chat-message');
+    const m = bubble && messageOf(bubble);
+    closeMenus();
+    if (!m || m.deleted) return;
+    const own = m.from === currentUser?.email;
+    switch (button.dataset.messageAction) {
+      case 'edit': if (own) startEdit(bubble, m); break;
+      case 'delete': if (own) deleteMessage(m); break;
+      case 'forward': openForward(m); break;
+      case 'copy': copyMessage(bubble); break;
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
   /* Réactions                                                          */
   /* ---------------------------------------------------------------- */
   const closePickers = except => modal.querySelectorAll('.chat-reaction-picker.visible, .chat-reaction-picker.expanded').forEach(picker => {
@@ -384,16 +657,26 @@
   }
 
   modal.addEventListener('click', event => {
+    const more = event.target.closest('.chat-message-more');
+    if (more) { closePickers(); toggleMenu(more); return; }
+    const action = event.target.closest('[data-message-action]');
+    if (action) { runAction(action); return; }
+    if (!event.target.closest('.chat-message-tools')) closeMenus();
+
+    if (event.target.closest('.chat-edit-cancel')) { rerender(); return; }
+    const save = event.target.closest('.chat-edit-save');
+    if (save) { saveEdit(save.closest('.chat-message')); return; }
+
     const image = event.target.closest('.att-img');
     if (image) { openLightbox(image); return; }
     const react = event.target.closest('.msg-react-btn');
     if (react) { toggleReactions(react.closest('.chat-message')); return; }
-    const more = event.target.closest('.pick-more');
-    if (more) {
-      const picker = more.closest('.chat-reaction-picker');
+    const plus = event.target.closest('.pick-more');
+    if (plus) {
+      const picker = plus.closest('.chat-reaction-picker');
       closePickers(picker);
       picker.classList.remove('visible');
-      more.setAttribute('aria-expanded', String(picker.classList.toggle('expanded')));
+      plus.setAttribute('aria-expanded', String(picker.classList.toggle('expanded')));
       return;
     }
     if (!event.target.closest('.chat-reaction-picker')) closePickers();
@@ -401,6 +684,12 @@
       emojiPanel.hidden = true;
       modal.querySelector('#chat-emoji-btn')?.setAttribute('aria-expanded', 'false');
     }
+  });
+
+  // Édition : Entrée enregistre, Maj+Entrée = retour à la ligne, Échap annule
+  modal.addEventListener('keydown', event => {
+    if (!event.target.matches?.('.chat-edit-input')) return;
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); saveEdit(event.target.closest('.chat-message')); }
   });
 
   // Bulle proche du haut du fil : la barre de réactions s'ouvre en dessous
@@ -413,8 +702,12 @@
 
   document.addEventListener('keydown', event => {
     if (event.key !== 'Escape') return;
+    const forward = document.querySelector('.chat-forward');
+    if (forward) { forward.remove(); event.stopImmediatePropagation(); return; }
     const lightbox = document.querySelector('.chat-lightbox');
     if (lightbox) { lightbox.remove(); event.stopImmediatePropagation(); return; }
+    if (document.activeElement?.matches?.('.chat-edit-input')) { rerender(); event.stopImmediatePropagation(); return; }
+    if (modal.querySelector('.chat-message-menu:not([hidden])')) { closeMenus(); event.stopImmediatePropagation(); return; }
     if (emojiPanel && !emojiPanel.hidden) { emojiPanel.hidden = true; event.stopImmediatePropagation(); return; }
     if (modal.querySelector('.chat-reaction-picker.visible, .chat-reaction-picker.expanded')) { closePickers(); event.stopImmediatePropagation(); }
   }, true);
@@ -435,7 +728,7 @@
     const other = modal.querySelector('#chat-recipient')?.value;
     if (!me || !other) return;
     let all = [];
-    try { all = JSON.parse(localStorage.getItem('etokiana-messages') || '[]') || []; } catch { all = []; }
+    try { all = JSON.parse(localStorage.getItem(MSG_KEY) || '[]') || []; } catch { all = []; }
     const conversation = all.filter(m => (m.from === me && m.to === other) || (m.to === me && m.from === other));
     if (conversation.length !== bubbles.length) return;   // correspondance incertaine : on n'ajoute rien
     const labels = conversation.map(m => dayLabel(m.date));
@@ -490,7 +783,12 @@
         message.classList.toggle('is-first', !same(previous));
         message.classList.toggle('is-last', !same(next));
         if (initials && !mine) message.dataset.initials = initials;
-        renderAttachments(message);
+
+        const m = messageOf(message);
+        if (m?.deleted) { markDeleted(message); return; }
+        renderAttachments(message, m);
+        addMarkers(message, m);
+        addTools(message, m);
 
         const picker = message.querySelector('.chat-reaction-picker');
         if (picker && !picker.querySelector('.pick-more')) {
@@ -513,7 +811,7 @@
       updateJump();
     }
 
-    // Aperçus (liste des contacts, notifications) : jamais de repère ni d'identifiant
+    // Aperçus (liste des contacts, notifications) : jamais de repère technique
     document.querySelectorAll('#msgr-list .mc-main small, #notification-modal .notif-body p').forEach(element => {
       const cleaned = cleanPreview(element.textContent);
       if (cleaned !== element.textContent) element.textContent = cleaned;

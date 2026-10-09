@@ -1,0 +1,63 @@
+/* ==========================================================================
+   E-tokiana — chat-actions.css  (à charger APRÈS chat.css)
+   Complète les styles « Actions des messages » déjà présents dans chat.css :
+   transfert, message supprimé, édition, menu à ouverture verticale.
+   ========================================================================== */
+
+/* Menu « ⋯ » : reste visible tant qu'il est ouvert, s'ouvre vers le haut si besoin */
+.chat-message-tools.open { opacity: 1; pointer-events: auto; }
+.chat-message-menu.up { bottom: 34px; top: auto; }
+.chat-message-menu button { font-size: 13px; }
+.chat-message-menu button[data-message-action="delete"]:hover { background: #fdecea; }
+
+/* Pendant l'édition : on masque tout ce qui gêne */
+.chat-message.is-editing { max-width: min(420px, 88%); width: 100%; }
+.chat-message.is-editing > .chat-message-tools,
+.chat-message.is-editing > .msg-react-btn,
+.chat-message.is-editing > .chat-reaction-picker { display: none; }
+.chat-message.mine .chat-edit-input { color: var(--ink); }
+.chat-message.mine .chat-edit-cancel { background: rgba(255, 255, 255, .85); }
+.chat-message.mine .chat-edit-save { background: var(--ink); }
+
+/* Libellés « Transféré » et « modifié » */
+.chat-fwd { align-items: center; display: flex; font-size: 11px; font-style: italic; gap: 5px; margin-bottom: 3px; opacity: .75; }
+.chat-edited { font-size: 10px; }
+
+/* Message supprimé */
+.chat-panel.msgr .chat-message.is-deleted,
+.chat-panel.msgr .chat-message.mine.is-deleted,
+.chat-panel.msgr .chat-message.theirs.is-deleted {
+  background: transparent;
+  border: 1px dashed #c9c1b7;
+  box-shadow: none;
+  color: var(--muted);
+}
+.chat-message.is-deleted > p { font-size: 13px; font-style: italic; }
+.chat-message.is-deleted > p i { margin-right: 4px; }
+.chat-message.is-deleted .chat-message-footer small { color: var(--muted); }
+
+/* Écrans tactiles larges : les actions ne chevauchent pas le bouton « Réagir » */
+@media (hover: none) and (min-width: 801px) {
+  .chat-message.mine > .chat-message-tools { right: calc(100% + 42px); }
+  .chat-message.theirs > .chat-message-tools { left: calc(100% + 42px); }
+}
+
+/* ---------- Fenêtre « Transférer » ---------- */
+.chat-forward { align-items: center; background: rgba(15, 15, 15, .5); display: flex; inset: 0; justify-content: center; padding: 16px; position: fixed; z-index: 65; }
+.chat-forward-panel { background: var(--white); border-radius: var(--radius-l); box-shadow: var(--shadow-l); display: flex; flex-direction: column; gap: 12px; max-height: min(560px, 90vh); max-width: 400px; padding: 18px; width: 100%; }
+.chat-forward-panel > header { align-items: center; display: flex; justify-content: space-between; }
+.chat-forward-panel > header strong { font-size: 17px; }
+.chat-forward-close { align-items: center; border-radius: 50%; display: inline-flex; height: 32px; justify-content: center; width: 32px; }
+.chat-forward-close:hover { background: var(--paper); color: var(--orange); }
+.chat-forward-preview { align-items: center; background: var(--paper); border-left: 3px solid var(--green); border-radius: var(--radius-s); color: #4a453f; display: flex; font-size: 13px; gap: 10px; padding: 9px 12px; }
+.chat-forward-preview i { color: var(--green); flex: 0 0 auto; }
+.chat-forward-preview span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-forward-list { display: flex; flex: 1; flex-direction: column; gap: 2px; min-height: 120px; overflow-y: auto; }
+.fw-contact { align-items: center; border-radius: var(--radius-m); display: flex; gap: 12px; padding: 8px; text-align: left; width: 100%; }
+.fw-contact:hover { background: var(--paper); }
+.fw-contact.selected { background: #e7efe8; }
+.fw-contact .mc-main { flex: 1; min-width: 0; }
+.fw-contact > i { color: var(--muted); font-size: 20px; }
+.fw-contact.selected > i { color: var(--green); }
+.chat-forward-panel > footer { display: flex; justify-content: flex-end; }
+.chat-forward-send:disabled { cursor: not-allowed; opacity: .5; }
