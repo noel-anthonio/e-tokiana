@@ -61,3 +61,55 @@
 .fw-contact.selected > i { color: var(--green); }
 .chat-forward-panel > footer { display: flex; justify-content: flex-end; }
 .chat-forward-send:disabled { cursor: not-allowed; opacity: .5; }
+
+/* ==========================================================================
+   Couleurs des actions
+   Le menu, le bouton « ⋯ » et le formulaire de modification se trouvent DANS
+   la bulle : ils héritaient du texte blanc des messages envoyés (illisible sur
+   fond blanc). Les couleurs sont donc fixées explicitement, avec la palette
+   du site : vert pour les actions, rouge pour la suppression.
+   ========================================================================== */
+
+/* Bouton « ⋯ » */
+.chat-message-more { background: var(--white); border-color: var(--line); color: #5c564e; }
+.chat-message-more:hover,
+.chat-message-more[aria-expanded="true"],
+.chat-message-tools.open .chat-message-more { background: var(--green); border-color: var(--green); color: var(--white); }
+
+/* Menu */
+.chat-message-menu { background: var(--white); border-color: var(--line); color: var(--ink); }
+.chat-message-menu button { color: var(--ink); font-weight: 500; }
+.chat-message-menu button i { color: var(--green); }
+.chat-message-menu button:hover { background: #e7efe8; color: var(--green-deep); }
+.chat-message-menu button:hover i { color: var(--green-deep); }
+.chat-message-menu button[data-message-action="delete"],
+.chat-message-menu button[data-message-action="delete"] i { color: var(--orange); }
+.chat-message-menu button[data-message-action="delete"]:hover { background: #fdecea; }
+
+/* Modification d'un message */
+.chat-edit-input { background: var(--white); border-color: var(--green); color: var(--ink); }
+.chat-edit-cancel { background: var(--white); border: 1px solid var(--line); color: #5c564e; }
+.chat-edit-cancel:hover { border-color: var(--ink); color: var(--ink); }
+.chat-edit-save { background: var(--green); color: var(--white); }
+.chat-edit-save:hover { background: var(--green-deep); }
+/* dans une bulle verte : boutons clairs, lisibles */
+.chat-message.mine .chat-edit-input { border-color: transparent; box-shadow: 0 0 0 2px rgba(255, 255, 255, .55); }
+.chat-message.mine .chat-edit-cancel { background: rgba(255, 255, 255, .2); border-color: transparent; color: var(--white); }
+.chat-message.mine .chat-edit-cancel:hover { background: rgba(255, 255, 255, .32); }
+.chat-message.mine .chat-edit-save { background: var(--white); color: var(--green); }
+.chat-message.mine .chat-edit-save:hover { background: #e7efe8; }
+
+/* « modifié » est affiché sous la bulle (fond clair) : texte gris, jamais blanc */
+.chat-panel.msgr .chat-message .chat-edited,
+.chat-panel.msgr .chat-message.mine .chat-edited { color: var(--muted); opacity: 1; }
+
+/* « Transféré » : couleur adaptée à chaque type de bulle */
+.chat-message.theirs .chat-fwd { color: #6b655c; opacity: 1; }
+.chat-message.mine .chat-fwd { color: rgba(255, 255, 255, .9); opacity: 1; }
+
+/* Fenêtre « Transférer » */
+.chat-forward-panel { color: var(--ink); }
+.chat-forward-panel .chat-forward-preview { background: #f3efe7; border-left-color: var(--green); }
+.chat-forward-panel .chat-forward-send { background: var(--green); border-color: var(--green); color: var(--white); }
+.chat-forward-panel .chat-forward-send:hover:not(:disabled) { background: var(--green-deep); border-color: var(--green-deep); }
+.fw-contact.selected strong { color: var(--green-deep); }

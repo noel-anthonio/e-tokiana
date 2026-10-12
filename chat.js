@@ -366,9 +366,14 @@
     return link;
   }
 
-  function buildAttachment(a) {
-    if (!a) return h('div', 'att-missing', '<i class="bi bi-image" aria-hidden="true"></i><span>Pièce jointe indisponible sur cet appareil</span>');
-    if (!isImage(a)) return buildFile(a);
+  // Les photos déjà chargées sont conservées : quand le fil est redessiné
+  // (réaction, modification…), on les remet telles quelles, sans rechargement.
+  const imgCache = new Map();
+  const IMG_LIMIT = 40;
+
+  function buildImage(a) {
+    const cached = imgCache.get(a.id);
+    if (cached && !cached.isConnected) return cached;            // déjà chargée : réutilisée
     const button = h('button', 'att-img');
     button.type = 'button';
     button.dataset.name = a.name;
@@ -380,10 +385,18 @@
       if (thread && thread.scrollHeight - thread.scrollTop - thread.clientHeight < 420) thread.scrollTop = thread.scrollHeight;
     });
     // Format illisible par le navigateur (ex. HEIC) : on propose le fichier à télécharger
-    img.addEventListener('error', () => button.replaceWith(buildFile(a)));
+    img.addEventListener('error', () => { imgCache.delete(a.id); button.replaceWith(buildFile(a)); });
     img.src = a.data;
     button.append(img);
+    imgCache.delete(a.id);
+    imgCache.set(a.id, button);
+    if (imgCache.size > IMG_LIMIT) imgCache.delete(imgCache.keys().next().value);
     return button;
+  }
+
+  function buildAttachment(a) {
+    if (!a) return h('div', 'att-missing', '<i class="bi bi-image" aria-hidden="true"></i><span>Pièce jointe indisponible sur cet appareil</span>');
+    return isImage(a) ? buildImage(a) : buildFile(a);
   }
 
   function renderAttachments(bubble, m) {
@@ -686,6 +699,20 @@
     }
   });
 
+  // Réagir redessine tout le fil (app.js) : on garde la position de lecture
+  // (ou le bas du fil si on y était) au lieu de sauter à la fin.
+  function keepScroll() {
+    const thread = modal.querySelector('#chat-thread');
+    if (!thread) return;
+    const top = thread.scrollTop;
+    const atBottom = thread.scrollHeight - top - thread.clientHeight < 40;
+    const restore = () => { thread.scrollTop = atBottom ? thread.scrollHeight : top; updateJump(); };
+    requestAnimationFrame(restore);
+    setTimeout(restore, 120);
+  }
+  modal.addEventListener('click', event => { if (event.target.closest('#chat-thread [data-react]')) keepScroll(); }, true);
+  modal.addEventListener('contextmenu', event => { if (event.target.closest('#chat-thread .chat-message')) keepScroll(); }, true);
+
   // Édition : Entrée enregistre, Maj+Entrée = retour à la ligne, Échap annule
   modal.addEventListener('keydown', event => {
     if (!event.target.matches?.('.chat-edit-input')) return;
@@ -786,9 +813,8 @@
 
         const m = messageOf(message);
         if (m?.deleted) { markDeleted(message); return; }
-        renderAttachments(message, m);
-        addMarkers(message, m);
-        addTools(message, m);
+        try { renderAttachments(message, m); } catch (error) { console.warn('Pièce jointe :', error); }
+        try { addMarkers(message, m); addTools(message, m); } catch (error) { console.warn('Actions :', error); }
 
         const picker = message.querySelector('.chat-reaction-picker');
         if (picker && !picker.querySelector('.pick-more')) {
@@ -820,10 +846,14 @@
 
   // Appelé directement par l'observateur (micro-tâche) : le navigateur n'affiche
   // jamais la version brute des messages. Les passes suivantes ne changent plus rien.
-  const observer = new MutationObserver(enhance);
-  observer.observe(modal, { childList: true, subtree: true });
-  observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+  // IMPORTANT : deux observateurs distincts. Appeler observe() deux fois sur la même
+  // cible avec le MÊME observateur remplace les options de la première fois :
+  // le fil n'était alors plus surveillé et les pièces jointes disparaissaient dès
+  // qu'il était redessiné (réaction, nouveau message…).
+  const contentObserver = new MutationObserver(enhance);
+  contentObserver.observe(modal, { childList: true, subtree: true });
   const notifModal = document.querySelector('#notification-modal');
-  if (notifModal) observer.observe(notifModal, { childList: true, subtree: true });
+  if (notifModal) contentObserver.observe(notifModal, { childList: true, subtree: true });
+  new MutationObserver(enhance).observe(modal, { attributes: true, attributeFilter: ['class'] });
   enhance();
 })();

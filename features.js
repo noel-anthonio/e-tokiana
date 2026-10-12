@@ -81,6 +81,8 @@
 
   function audit(key, old, next) {
     if (key === 'etokiana-cart') {
+      if (next && next.length) nativeSet.call(localStorage, 'etokiana-cart-ts', String(Date.now()));
+      else nativeRemove.call(localStorage, 'etokiana-cart-ts');
       if (skipCartLog) { skipCartLog = false; return; }
       const before = byId(old), after = byId(next);
       after.forEach((item, id) => {
@@ -109,9 +111,13 @@
       before.forEach((product, id) => { if (!after.has(id)) logAction('catalog', `Produit supprimé : ${product.name}`); });
     } else if (key === 'etokiana-users') {
       const before = byId(old);
-      (next || []).forEach(user => { if (!before.has(String(user.id))) logAction('auth', 'Compte créé', user); });
+      (next || []).forEach(user => {
+        if (before.has(String(user.id))) return;
+        logAction('auth', 'Compte créé', user);
+        if (user.role === 'seller') addNotification(adminIdentity.email, `Nouveau vendeur inscrit : ${user.name}`, SYSTEM);
+      });
     } else if (key === 'etokiana-user') {
-      if (!old && next) logAction('auth', 'Connexion', next);
+      if (!old && next) { logAction('auth', 'Connexion', next); setTimeout(autoNotify, 500); }
       else if (old && !next) logAction('auth', 'Déconnexion', old);
       else if (old && next && old.email !== next.email) logAction('auth', 'Connexion', next);
       else if (old && next && ['name', 'phone', 'address'].some(field => old[field] !== next[field])) logAction('profile', 'Profil mis à jour', next);
@@ -539,18 +545,51 @@
   });
 
   /* ====================================================================== */
-  /* 3. NOTIFICATIONS                                                        */
+  /* 3. NOTIFICATIONS : centre enrichi (actions, détails, épingles, sourdine,  */
+  /*    son + titre d'onglet, notifications automatiques)                      */
   /* ====================================================================== */
   const notifModal = $('#notification-modal');
   const notifPanel = $('.notification-panel', notifModal);
   const newIds = new Set();
   let notifFilter = 'all';
-  const NOTIF_ICON = { message: 'bi-chat-dots', alert: 'bi-exclamation-triangle', order: 'bi-bag-check', info: 'bi-bell' };
-  const kindOf = notification => /Nouveau message/.test(notification.message) ? 'message' : /stock/i.test(notification.message) ? 'alert' : /commande/i.test(notification.message) ? 'order' : 'info';
+  const PREFS_KEY = 'etokiana-notif-prefs';
+  const AUTO_KEY = 'etokiana-notif-auto';
+  const NOTIF_ICON = { message: 'bi-chat-dots', alert: 'bi-exclamation-triangle', order: 'bi-bag-check', promo: 'bi-tag', reminder: 'bi-cart3', info: 'bi-bell' };
+  const MUTE_OPTIONS = [['order', 'Commandes'], ['message', 'Messages'], ['alert', 'Alertes de stock'], ['promo', 'Offres et rappels']];
+  const GROUP_KINDS = { alert: ['alert', 'promo', 'reminder'] };
+  const staffLike = () => ['owner', 'admin', 'seller'].includes(currentUser?.role);
+  const canManage = product => isStaff(currentUser) || (currentUser?.role === 'seller' && product.sellerId === currentUser.id);
+
+  const kindOf = notification => {
+    const m = notification.message;
+    if (/Nouveau message/.test(m)) return 'message';
+    if (/Stock (épuisé|faible)/i.test(m)) return 'alert';
+    if (/De retour en stock|Promotion :/i.test(m)) return 'promo';
+    if (/panier vous attend/i.test(m)) return 'reminder';
+    if (/commande/i.test(m)) return 'order';
+    return 'info';
+  };
+  const muteKey = kind => kind === 'reminder' ? 'promo' : kind;
+
+  const readPrefs = () => {
+    const base = { pinned: [], muted: {}, sound: true, title: true };
+    if (!currentUser) return base;
+    const saved = (parse(localStorage.getItem(PREFS_KEY)) || {})[userNotificationKey()] || {};
+    return { ...base, ...saved, muted: { ...(saved.muted || {}) }, pinned: [...(saved.pinned || [])] };
+  };
+  const writePrefs = prefs => {
+    const all = parse(localStorage.getItem(PREFS_KEY)) || {};
+    all[userNotificationKey()] = prefs;
+    nativeSet.call(localStorage, PREFS_KEY, JSON.stringify(all));
+  };
+
   const myNotifications = () => notifications.filter(item => item.recipient === userNotificationKey()).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  const isMuted = (notification, prefs) => Boolean(prefs.muted[muteKey(kindOf(notification))]);
   const isNew = notification => !notification.read || newIds.has(String(notification.id));
   const markNew = () => myNotifications().forEach(item => { if (!item.read) newIds.add(String(item.id)); });
   const saveNotifications = () => nativeSet.call(localStorage, 'etokiana-notifications', JSON.stringify(notifications));
+  const orderOf = notification => { const id = notification.message.match(/#([A-Za-z0-9-]+)/)?.[1]; return id ? orders.find(order => order.id === id) : null; };
+  const productIn = notification => products.filter(product => notification.message.includes(product.name)).sort((a, b) => b.name.length - a.name.length)[0] || null;
 
   function ensureNotifUI() {
     if (notifPanel.dataset.ready) return;
@@ -558,43 +597,226 @@
     notifPanel.classList.add('notif-panel');
     const center = document.createElement('div');
     center.className = 'notif-center';
-    center.innerHTML = '<div class="notif-toolbar"><div class="notif-chips"></div><button type="button" class="notif-clear" data-notif-clear><i class="bi bi-trash3" aria-hidden="true"></i>Tout effacer</button></div><div class="notif-items"></div>';
+    center.innerHTML = `<div class="notif-toolbar"><div class="notif-chips"></div>
+      <button type="button" class="notif-tool" data-notif-settings title="Réglages des notifications" aria-label="Réglages des notifications" aria-expanded="false"><i class="bi bi-sliders" aria-hidden="true"></i></button>
+      <button type="button" class="notif-clear" data-notif-clear title="Tout effacer" aria-label="Tout effacer les notifications"><i class="bi bi-trash3" aria-hidden="true"></i></button></div>
+      <div class="notif-settings" hidden>
+        <h4>Recevoir les notifications</h4>
+        ${MUTE_OPTIONS.map(([key, label]) => `<label class="notif-switch"><input type="checkbox" data-pref-show="${key}" /><span class="sw"></span><span>${label}</span></label>`).join('')}
+        <h4>Signaux</h4>
+        <label class="notif-switch"><input type="checkbox" data-pref="sound" /><span class="sw"></span><span>Son à l’arrivée d’une notification</span></label>
+        <label class="notif-switch"><input type="checkbox" data-pref="title" /><span class="sw"></span><span>Compteur dans le titre de l’onglet</span></label>
+      </div>
+      <div class="notif-items"></div>`;
     $('.notification-list', notifPanel).before(center);
+  }
+
+  // Contenu détaillé d'une notification : titre, vignette, informations et boutons d'action
+  function describe(notification) {
+    const kind = kindOf(notification);
+    const split = notification.message.indexOf(' : ');
+    const author = split > 0 ? notification.message.slice(0, split) : '';
+    const text = (split > 0 ? notification.message.slice(split + 3) : notification.message).replace(/^Nouveau message : /, '');
+    const d = { kind, author, text, title: '', thumb: '', initials: '', metas: [], actions: [] };
+    const order = orderOf(notification), product = productIn(notification);
+
+    if (kind === 'message') {
+      d.title = `Message de ${author || 'un contact'}`;
+      d.initials = initialsOf(author || '?');
+      if (notification.actor) d.actions.push(['reply', 'bi-reply', 'Répondre', true], ['chat', 'bi-chat-dots', 'Ouvrir la conversation']);
+    } else if (kind === 'order') {
+      d.title = `Commande${order ? ' #' + order.id : ''}`;
+      if (order) {
+        const index = Math.max(0, STEPS.indexOf(order.status));
+        d.thumb = ownItems(order)[0]?.image || '';
+        d.metas.push({ icon: 'bi-cash-coin', text: euro(isSeller() ? netGain(order) : Number(order.total) || 0) });
+        if (staffLike()) d.metas.push({ icon: 'bi-person', text: order.buyerName || 'Client invité' });
+        d.metas.push({ pill: `ord-status s${index}`, text: order.status });
+        if (staffLike()) {
+          if (order.status !== 'Livrée') d.actions.push(['advance', 'bi-check2-circle', nextOrderStatus(order.status), true]);
+          d.actions.push(['orders', 'bi-list-ul', 'Voir les commandes']);
+        } else d.actions.push(['track', 'bi-truck', 'Suivre la commande', true]);
+      }
+    } else if (kind === 'alert') {
+      d.title = 'Alerte stock';
+      if (product) {
+        d.thumb = product.image;
+        const left = stockOf(product);
+        d.metas.push({ icon: 'bi-box-seam', text: left === Infinity ? 'Illimité' : `Stock : ${left}`, cls: left <= 0 ? 'out' : left <= LOW ? 'low' : 'ok' });
+        if (notification.handled === 'restock') d.metas.push({ icon: 'bi-check2-circle', text: 'Réapprovisionné', cls: 'ok' });
+        if (canManage(product)) {
+          if (notification.handled !== 'restock') d.actions.push(['restock', 'bi-plus-circle', '+10 en stock', true]);
+          d.actions.push(['manage', 'bi-box-seam', 'Gérer le stock']);
+        }
+      }
+    } else if (kind === 'promo') {
+      d.title = /De retour/i.test(text) ? 'Retour en stock' : 'Promotion';
+      if (product) {
+        d.thumb = product.image;
+        d.metas.push({ icon: 'bi-tag', text: euro(effectivePrice(product)) });
+        d.actions.push(['product', 'bi-eye', 'Voir le produit', true]);
+        if (stockOf(product) > 0) d.actions.push(['add', 'bi-bag-plus', 'Ajouter au panier']);
+      }
+    } else if (kind === 'reminder') {
+      d.title = 'Panier en attente';
+      d.thumb = cart[0]?.image || '';
+      d.metas.push({ icon: 'bi-cart3', text: `${cart.reduce((sum, item) => sum + item.quantity, 0)} article(s)` }, { icon: 'bi-cash-coin', text: euro(cartSubtotal()) });
+      d.actions.push(['cart', 'bi-cart3', 'Voir le panier', true]);
+    } else {
+      const seller = /vendeur inscrit/i.test(text);
+      d.title = seller ? 'Nouveau vendeur' : (author || 'Notification');
+      if (seller && staffLike()) d.actions.push(['sellers', 'bi-shop-window', 'Voir les vendeurs', true]);
+    }
+    return d;
+  }
+
+  function cardHTML(notification, prefs) {
+    const d = describe(notification);
+    const pinned = prefs.pinned.includes(String(notification.id));
+    const media = d.thumb
+      ? `<img src="${esc(d.thumb)}" alt="" loading="lazy" />`
+      : d.initials ? `<b class="notif-initials">${esc(d.initials)}</b>` : `<i class="bi ${NOTIF_ICON[d.kind]}" aria-hidden="true"></i>`;
+    const metas = d.metas.map(meta => meta.pill
+      ? `<span class="${meta.pill}">${esc(meta.text)}</span>`
+      : `<span class="notif-tag ${meta.cls || ''}"><i class="bi ${meta.icon}" aria-hidden="true"></i>${esc(meta.text)}</span>`).join('');
+    const actions = d.actions.map(([key, icon, label, primary]) => `<button type="button" class="notif-act ${primary ? 'primary' : ''}" data-notif-act="${key}"><i class="bi ${icon}" aria-hidden="true"></i>${esc(label)}</button>`).join('');
+    const reply = d.kind === 'message' && notification.actor ? `<form class="notif-reply" data-notif-reply hidden><input type="text" maxlength="500" placeholder="Votre réponse…" aria-label="Votre réponse" /><button type="submit" aria-label="Envoyer la réponse"><i class="bi bi-send-fill" aria-hidden="true"></i></button></form>` : '';
+    return `<article class="notif k-${d.kind} ${isNew(notification) ? 'is-new' : ''} ${pinned ? 'is-pinned' : ''}" data-notif="${notification.id}" tabindex="0" role="button">
+      <span class="notif-media">${media}<i class="notif-kind bi ${NOTIF_ICON[d.kind]}" aria-hidden="true"></i></span>
+      <div class="notif-body">
+        <div class="notif-top"><strong>${esc(d.title)}</strong><time>${timeAgo(notification.date)}</time></div>
+        <p>${esc(d.text)}</p>
+        ${metas ? `<div class="notif-meta">${metas}</div>` : ''}
+        ${actions ? `<div class="notif-actions">${actions}</div>` : ''}
+        ${reply}
+      </div>
+      <div class="notif-side">
+        <button type="button" class="notif-pin" data-notif-pin="${notification.id}" aria-label="${pinned ? 'Désépingler' : 'Épingler'}" aria-pressed="${pinned}"><i class="bi ${pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle'}" aria-hidden="true"></i></button>
+        <button type="button" class="notif-del" data-notif-del="${notification.id}" aria-label="Supprimer cette notification"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      </div></article>`;
   }
 
   function renderNotifCenter() {
     ensureNotifUI();
-    const all = myNotifications();
+    const prefs = readPrefs();
+    const everything = myNotifications();
+    const all = everything.filter(item => !isMuted(item, prefs));
+    const hidden = everything.length - all.length;
     const FILTERS = [['all', 'Toutes'], ['new', 'Non lues'], ['order', 'Commandes'], ['message', 'Messages'], ['alert', 'Alertes']];
-    const count = key => key === 'all' ? all.length : key === 'new' ? all.filter(isNew).length : all.filter(item => kindOf(item) === key).length;
-    $('.notif-chips', notifPanel).innerHTML = FILTERS.map(([key, label]) => `<button type="button" class="notif-chip ${notifFilter === key ? 'active' : ''}" data-notif-filter="${key}">${label}<b>${count(key)}</b></button>`).join('');
-    $('[data-notif-clear]', notifPanel).hidden = all.length === 0;
-    const list = all.filter(item => notifFilter === 'all' || (notifFilter === 'new' ? isNew(item) : kindOf(item) === notifFilter));
+    const inFilter = (item, key) => key === 'all' || (key === 'new' ? isNew(item) : (GROUP_KINDS[key] || [key]).includes(kindOf(item)));
+    const count = key => all.filter(item => inFilter(item, key)).length;
+    $('.notif-chips', notifPanel).innerHTML = FILTERS.map(([key, label]) => `<button type="button" class="notif-chip ${notifFilter === key ? 'active' : ''}" data-notif-filter="${key}">${label}${count(key) ? `<b>${count(key)}</b>` : ''}</button>`).join('');
+    $('[data-notif-clear]', notifPanel).hidden = everything.length === 0;
+    MUTE_OPTIONS.forEach(([key]) => { const box = $(`[data-pref-show="${key}"]`, notifPanel); if (box) box.checked = !prefs.muted[key]; });
+    ['sound', 'title'].forEach(key => { const box = $(`[data-pref="${key}"]`, notifPanel); if (box) box.checked = Boolean(prefs[key]); });
+
+    const list = all.filter(item => inFilter(item, notifFilter));
     const target = $('.notif-items', notifPanel);
+    const note = hidden ? `<p class="notif-muted-note"><i class="bi bi-bell-slash" aria-hidden="true"></i> ${hidden} notification${hidden > 1 ? 's' : ''} masquée${hidden > 1 ? 's' : ''} par vos réglages <button type="button" data-notif-settings>Gérer</button></p>` : '';
     if (!list.length) {
-      target.innerHTML = `<div class="space-empty"><i class="bi bi-bell-slash" aria-hidden="true"></i><strong>${all.length ? 'Rien dans cette catégorie' : 'Aucune notification'}</strong><p>${all.length ? 'Changez de filtre pour voir le reste.' : 'Commandes, messages et alertes de stock apparaîtront ici.'}</p></div>`;
+      target.innerHTML = `<div class="space-empty"><i class="bi bi-bell-slash" aria-hidden="true"></i><strong>${all.length ? 'Rien dans cette catégorie' : 'Aucune notification'}</strong><p>${all.length ? 'Changez de filtre pour voir le reste.' : 'Commandes, messages, alertes de stock et offres apparaîtront ici.'}</p></div>${note}`;
+    } else {
+      const pinned = list.filter(item => prefs.pinned.includes(String(item.id)));
+      const rest = list.filter(item => !prefs.pinned.includes(String(item.id)));
+      target.innerHTML = (pinned.length ? `<section class="notif-day notif-pinned"><h4><i class="bi bi-pin-angle-fill" aria-hidden="true"></i> Épinglées</h4>${pinned.map(item => cardHTML(item, prefs)).join('')}</section>` : '')
+        + groupByDay(rest, item => item.date).map(day => `<section class="notif-day"><h4>${day.label}</h4>${day.items.map(item => cardHTML(item, prefs)).join('')}</section>`).join('')
+        + note;
+    }
+    syncBadges();
+  }
+
+  /* ----- Actions rapides ----- */
+  function goAdmin(view) {
+    closeModal(notifModal);
+    openUserSpace();
+    setTimeout(() => { activateAdminView(view); refreshAdminPanel(view); }, 80);
+  }
+
+  function advanceOrder(order) {
+    if (!order || !staffLike()) return;
+    const next = { 'Nouvelle commande': 'Validée', 'Validée': 'En préparation', 'En préparation': 'Expédiée', 'Expédiée': 'Livrée' }[order.status];
+    if (!next) return;
+    order.status = next;
+    localStorage.setItem('etokiana-orders', JSON.stringify(orders));
+    addNotification(order.buyerId, `Votre commande #${order.id} est maintenant : ${order.status}.`);
+    (order.items || []).filter(item => item.sellerId !== 'owner').forEach(item => { const email = sellerEmail(item.sellerId); if (email) addNotification(email, `La commande #${order.id} est maintenant : ${order.status}.`); });
+    addNotification(adminIdentity.email, `Mise à jour de la commande #${order.id} : ${order.status}.`);
+    try { renderSellerAndOwnerViews(); addSellerOrderActions(); addOwnerOrderActions(); } catch { /* vues admin non ouvertes */ }
+    if ($('.admin-content')) { renderOrders(); if (!isSeller()) renderSellers(); }
+    showToast(`Commande ${order.id} : ${order.status}`);
+  }
+
+  function restock(product, quantity) {
+    if (!product || !canManage(product)) return false;
+    const before = stockOf(product);
+    setStock(product.id, before + quantity);
+    logAction('catalog', `Stock de ${product.name} : ${before} → ${before + quantity}`);
+    renderProducts();
+    decorateStockRows();
+    showToast(`${product.name} : +${quantity} en stock`);
+    return true;
+  }
+
+  function openProduct(product) {
+    if (!product) return;
+    closeModal(notifModal);
+    selectedProduct = product;
+    $('#product-modal-image').src = product.image;
+    $('#product-modal-image').alt = product.name;
+    $('#product-modal-category').textContent = `${(product.categoryPath || [product.category]).join(' / ')} / E-tokiana`;
+    $('#product-modal-title').textContent = product.name;
+    $('#product-modal-material').textContent = product.material;
+    $('#product-modal-price').innerHTML = product.discount ? `<del>${euro(product.price)}</del> <strong>${euro(effectivePrice(product))}</strong> <span class="discount-inline">-${product.discount}%</span>` : euro(product.price);
+    $('#product-modal-quantity').value = '1';
+    openModal(productModal);
+  }
+
+  function runAction(action, id) {
+    const notification = notifications.find(item => String(item.id) === String(id));
+    if (!notification) return;
+    const order = orderOf(notification), product = productIn(notification);
+    if (action === 'reply') {
+      const form = $(`[data-notif="${id}"] .notif-reply`, notifPanel);
+      if (form) { form.hidden = !form.hidden; if (!form.hidden) $('input', form).focus(); }
       return;
     }
-    target.innerHTML = groupByDay(list, item => item.date).map(day => `<section class="notif-day"><h4>${day.label}</h4>${day.items.map(item => {
-      const kind = kindOf(item);
-      const split = item.message.indexOf(' : ');
-      const author = split > 0 ? item.message.slice(0, split) : '';
-      let text = split > 0 ? item.message.slice(split + 3) : item.message;
-      text = text.replace(/^Nouveau message : /, '');
-      const orderId = item.message.match(/#([A-Za-z0-9-]+)/)?.[1];
-      const title = kind === 'message' ? `Message de ${author || 'un contact'}` : kind === 'alert' ? 'Alerte stock' : kind === 'order' ? `Commande${orderId ? ' #' + orderId : ''}` : (author || 'Notification');
-      return `<article class="notif k-${kind} ${isNew(item) ? 'is-new' : ''}" data-notif="${item.id}" tabindex="0" role="button"><span class="notif-ico"><i class="bi ${NOTIF_ICON[kind]}" aria-hidden="true"></i></span><div class="notif-body"><div class="notif-top"><strong>${esc(title)}</strong><time>${timeAgo(item.date)}</time></div><p>${esc(text)}</p></div><button type="button" class="notif-del" data-notif-del="${item.id}" aria-label="Supprimer cette notification"><i class="bi bi-x-lg" aria-hidden="true"></i></button></article>`;
-    }).join('')}</section>`).join('');
+    notification.read = true;
+    if (action === 'advance') advanceOrder(order);
+    else if (action === 'track') { saveNotifications(); renderNotifications(); closeModal(notifModal); return openOrderTracking(order); }
+    else if (action === 'orders') { saveNotifications(); renderNotifications(); return goAdmin('orders'); }
+    else if (action === 'chat') { saveNotifications(); renderNotifications(); closeModal(notifModal); return openChatWith(notification.actor); }
+    else if (action === 'restock') { if (restock(product, 10)) notification.handled = 'restock'; }
+    else if (action === 'manage') { saveNotifications(); renderNotifications(); return goAdmin('products'); }
+    else if (action === 'product') { saveNotifications(); renderNotifications(); return openProduct(product); }
+    else if (action === 'add') { if (product && canAdd(product, 1)) { addToCart(product); showToast(`${product.name} a rejoint votre panier`); } }
+    else if (action === 'cart') { saveNotifications(); renderNotifications(); closeModal(notifModal); return openCart(); }
+    else if (action === 'sellers') { saveNotifications(); renderNotifications(); return goAdmin('sellers'); }
+    saveNotifications();
+    renderNotifications();
+    renderNotifCenter();
   }
 
   notifPanel.addEventListener('click', event => {
     const chip = event.target.closest('[data-notif-filter]');
     if (chip) { notifFilter = chip.dataset.notifFilter; renderNotifCenter(); return; }
+    if (event.target.closest('[data-notif-settings]')) {
+      const box = $('.notif-settings', notifPanel);
+      box.hidden = !box.hidden;
+      $('.notif-tool', notifPanel).setAttribute('aria-expanded', String(!box.hidden));
+      return;
+    }
     if (event.target.closest('[data-notif-clear]')) {
       if (!window.confirm('Supprimer toutes vos notifications ?')) return;
       const key = userNotificationKey();
       notifications = notifications.filter(item => item.recipient !== key);
       saveNotifications(); newIds.clear(); renderNotifications(); renderNotifCenter();
+      return;
+    }
+    const pin = event.target.closest('[data-notif-pin]');
+    if (pin) {
+      const prefs = readPrefs(), id = pin.dataset.notifPin;
+      prefs.pinned = prefs.pinned.includes(id) ? prefs.pinned.filter(value => value !== id) : [...prefs.pinned, id];
+      writePrefs(prefs); renderNotifCenter();
       return;
     }
     const del = event.target.closest('[data-notif-del]');
@@ -603,26 +825,154 @@
       saveNotifications(); renderNotifications(); renderNotifCenter();
       return;
     }
+    const act = event.target.closest('[data-notif-act]');
+    if (act) { runAction(act.dataset.notifAct, act.closest('[data-notif]').dataset.notif); return; }
+    if (event.target.closest('.notif-reply')) return;
     const card = event.target.closest('[data-notif]');
     if (!card) return;
     const notification = notifications.find(item => String(item.id) === card.dataset.notif);
     if (!notification) return;
     notification.read = true;
     saveNotifications(); renderNotifications();
-    const orderId = notification.message.match(/#([A-Za-z0-9-]+)/)?.[1];
-    const order = orderId && orders.find(entry => entry.id === orderId);
+    const order = orderOf(notification);
     if (order) { closeModal(notifModal); return openOrderTracking(order); }
     if (kindOf(notification) === 'message' && notification.actor) { closeModal(notifModal); return openChatWith(notification.actor); }
-    if (kindOf(notification) === 'alert' && ['owner', 'admin', 'seller'].includes(currentUser?.role)) {
-      closeModal(notifModal); openUserSpace(); activateAdminView('products'); return;
-    }
+    if (kindOf(notification) === 'alert' && staffLike()) { return goAdmin('products'); }
+    renderNotifCenter();
+  });
+
+  // Réponse rapide à un message, sans quitter les notifications
+  notifPanel.addEventListener('submit', event => {
+    const form = event.target.closest('[data-notif-reply]');
+    if (!form) return;
+    event.preventDefault();
+    const notification = notifications.find(item => String(item.id) === form.closest('[data-notif]').dataset.notif);
+    const input = $('input', form);
+    const text = input.value.trim();
+    if (!notification?.actor || !text || !currentUser) return;
+    const message = { id: Date.now(), from: currentUser.email, fromName: actorIdentity().name, to: notification.actor, text, date: new Date().toISOString(), read: false, reactions: {} };
+    messages.push(message);
+    localStorage.setItem('etokiana-messages', JSON.stringify(messages));
+    addNotification(notification.actor, `Nouveau message : ${text}`);
+    notification.read = true;
+    saveNotifications();
+    renderNotifications();
+    if (typeof renderChatThread === 'function') renderChatThread();
+    showToast('Réponse envoyée');
+    renderNotifCenter();
+  });
+
+  // Réglages (sourdine, son, titre)
+  notifPanel.addEventListener('change', event => {
+    const show = event.target.closest?.('[data-pref-show]');
+    const flag = event.target.closest?.('[data-pref]');
+    if (!show && !flag) return;
+    const prefs = readPrefs();
+    if (show) prefs.muted[show.dataset.prefShow] = !show.checked;
+    if (flag) prefs[flag.dataset.pref] = flag.checked;
+    writePrefs(prefs);
     renderNotifCenter();
   });
   notifPanel.addEventListener('keydown', event => { if (event.key === 'Enter' && event.target.matches('[data-notif]')) event.target.click(); });
   document.addEventListener('click', event => { if (event.target.closest('.notification-button')) markNew(); }, true);
+
+  /* ----- Pastille, titre de l'onglet, son ----- */
+  const baseTitle = document.title.replace(/^\(\d+\)\s*/, '');
+  function syncBadges() {
+    const prefs = readPrefs();
+    const unread = currentUser ? myNotifications().filter(item => !item.read && !isMuted(item, prefs)).length : 0;
+    const badge = $('#notification-count');
+    if (badge) { badge.textContent = unread; badge.hidden = unread === 0; }
+    $$('[data-space-badge="notifications"]').forEach(element => { element.textContent = unread; element.hidden = unread === 0; });
+    document.title = prefs.title && unread > 0 ? `(${unread}) ${baseTitle}` : baseTitle;
+  }
+
+  let audio = null;
+  const prime = () => { if (audio) return; try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch { audio = null; } };
+  ['click', 'keydown', 'touchstart'].forEach(name => document.addEventListener(name, prime, { passive: true }));
+  function ding() {
+    if (!audio) return;
+    try {
+      if (audio.state === 'suspended') audio.resume();
+      const now = audio.currentTime;
+      [[880, 0], [1175, .13]].forEach(([frequency, delay]) => {
+        const oscillator = audio.createOscillator(), gain = audio.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.value = frequency;
+        gain.gain.setValueAtTime(.0001, now + delay);
+        gain.gain.exponentialRampToValueAtTime(.12, now + delay + .02);
+        gain.gain.exponentialRampToValueAtTime(.0001, now + delay + .28);
+        oscillator.connect(gain).connect(audio.destination);
+        oscillator.start(now + delay);
+        oscillator.stop(now + delay + .32);
+      });
+    } catch { /* son indisponible */ }
+  }
+
+  let knownNotifs = null, knownKey = null;
+  function checkIncoming() {
+    const key = currentUser ? userNotificationKey() : null;
+    if (!key) { knownNotifs = null; knownKey = null; syncBadges(); return; }
+    if (key !== knownKey) { knownKey = key; knownNotifs = null; }
+    const mine = myNotifications();
+    const ids = new Set(mine.map(item => String(item.id)));
+    if (knownNotifs === null) { knownNotifs = ids; syncBadges(); return; }
+    const fresh = mine.filter(item => !knownNotifs.has(String(item.id)) && !item.read);
+    knownNotifs = ids;
+    if (!fresh.length) { syncBadges(); return; }
+    const prefs = readPrefs();
+    const audible = fresh.filter(item => !isMuted(item, prefs));
+    renderNotifications();
+    if (!audible.length) return;
+    audible.forEach(item => newIds.add(String(item.id)));
+    if (prefs.sound) ding();
+    if (!notifModal.classList.contains('open')) {
+      const first = describe(audible[0]);
+      showToast(audible.length > 1 ? `${audible.length} nouvelles notifications` : `${first.title} : ${first.text}`.slice(0, 110));
+    }
+  }
+
+  /* ----- Notifications automatiques (panier oublié, favoris en promo / de retour) ----- */
+  function autoNotify() {
+    if (!currentUser?.email || isStaff(currentUser)) return;
+    const email = currentUser.email;
+    const all = parse(localStorage.getItem(AUTO_KEY)) || {};
+    const mine = all[email] ||= { watch: null, cart: '' };
+
+    const stamp = Number(localStorage.getItem('etokiana-cart-ts') || 0);
+    if (cart.length && stamp && Date.now() - stamp > 24 * 3600 * 1000 && mine.cart !== String(stamp)) {
+      addNotification(email, `Votre panier vous attend : ${cart.reduce((sum, item) => sum + item.quantity, 0)} article(s) · ${euro(cartSubtotal())}`, SYSTEM);
+      mine.cart = String(stamp);
+    }
+
+    const snapshot = {};
+    favorites.forEach(id => { const product = products.find(item => item.id === id); if (product) snapshot[id] = { discount: product.discount || 0, inStock: stockOf(product) > 0 }; });
+    if (mine.watch) {
+      Object.entries(snapshot).forEach(([id, now]) => {
+        const before = mine.watch[id];
+        const product = products.find(item => String(item.id) === id);
+        if (!before || !product) return;
+        if (!before.inStock && now.inStock) addNotification(email, `De retour en stock : ${product.name}`, SYSTEM);
+        if (now.discount > before.discount) addNotification(email, `Promotion : ${product.name} −${now.discount} % dans vos favoris`, SYSTEM);
+      });
+    }
+    mine.watch = snapshot;
+    nativeSet.call(localStorage, AUTO_KEY, JSON.stringify(all));
+  }
+
   new MutationObserver(renderNotifCenter).observe($('.notification-list', notifPanel), { childList: true });
-  new MutationObserver(() => { if (!notifModal.classList.contains('open')) { newIds.clear(); notifFilter = 'all'; } else renderNotifCenter(); }).observe(notifModal, { attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(() => {
+    if (!notifModal.classList.contains('open')) {
+      newIds.clear();
+      notifFilter = 'all';
+      const box = $('.notif-settings', notifPanel);
+      if (box) box.hidden = true;
+    } else renderNotifCenter();
+  }).observe(notifModal, { attributes: true, attributeFilter: ['class'] });
   markNew();
+  setInterval(checkIncoming, 3000);
+  setInterval(autoNotify, 60000);
+  setTimeout(() => { checkIncoming(); autoNotify(); }, 700);
 
   /* ====================================================================== */
   /* 4. MESSAGERIE                                                           */
