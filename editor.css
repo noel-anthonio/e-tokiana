@@ -1,0 +1,159 @@
+/* ==========================================================================
+   E-tokiana — editor.css  (à charger APRÈS tous les autres fichiers CSS)
+   Habille editor.js :
+   - espace Rédacteur (liste « À rédiger / Rédigées », formulaire + aperçu)
+   - fenêtre « Modifier le produit » (admin et vendeur)
+   - liste des rédacteurs dans Admin > Personnel, création de compte
+   - badge de rôle « Rédacteur »
+   ========================================================================== */
+
+/* ---------- Identité du rôle Rédacteur ---------- */
+.space-avatar.editor { background: #2f6179; }
+.space-role.editor { background: #e5eef3; color: #2f6179; }
+.identity-role-icon.editor { background: #e5eef3; color: #2f6179; }
+
+/* ---------- Espace Rédacteur : liste ---------- */
+.editor-space .ed-list-view[hidden], .editor-space .ed-form-view[hidden] { display: none; }
+.ed-tools { margin: 18px 0 16px; }
+.ed-tools .hist-search { flex: 1 1 260px; max-width: 360px; }
+.ed-list { display: grid; gap: 10px; }
+.ed-row {
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  padding: 12px;
+  transition: border-color .18s, box-shadow .18s;
+}
+.ed-row:hover { border-color: #c9c1b7; box-shadow: var(--shadow-s); }
+.ed-row > img { border-radius: var(--radius-s); height: 72px; object-fit: cover; width: 72px; }
+.ed-main { min-width: 0; }
+.ed-main strong { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-main small { color: var(--muted); display: block; font-size: 12px; margin-top: 3px; }
+.ed-excerpt {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: #4a453f;
+  display: -webkit-box;
+  font-size: 13px;
+  line-height: 1.5;
+  line-clamp: 2;
+  margin: 8px 0 0;
+  overflow: hidden;
+}
+.ed-excerpt em { color: var(--muted); }
+.ed-side { align-items: flex-end; display: flex; flex-direction: column; gap: 6px; }
+.ed-side small { color: var(--muted); font-size: 11px; max-width: 150px; text-align: right; }
+.ed-status { border-radius: 999px; font-size: 11px; font-weight: 600; padding: 3px 10px; white-space: nowrap; }
+.ed-status.done { background: #e7efe8; color: var(--green); }
+.ed-status.todo { background: #fbeeda; color: #8a4f0c; }
+
+/* ---------- Espace Rédacteur : formulaire de rédaction ---------- */
+.ed-back { align-items: center; color: var(--muted); display: inline-flex; font-size: 13px; font-weight: 600; gap: 8px; margin-bottom: 18px; padding: 6px 4px; }
+.ed-back:hover { color: var(--green); }
+.ed-grid { align-items: start; display: grid; gap: 26px; grid-template-columns: minmax(0, 1.35fr) minmax(240px, .65fr); }
+#ed-form h3 { font-family: var(--serif); font-size: 28px; font-weight: 500; letter-spacing: -.03em; margin: 0 0 4px; }
+.ed-path { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+#ed-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+#ed-text, #pe-desc {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  display: block;
+  font-size: 15px;
+  line-height: 1.6;
+  outline: 0;
+  padding: 14px 16px;
+  resize: vertical;
+  width: 100%;
+}
+#ed-text:focus, #pe-desc:focus { border-color: var(--green); box-shadow: 0 0 0 4px rgba(0, 126, 58, .12); }
+.ed-counter { color: var(--muted); display: flex; font-size: 12px; gap: 12px; justify-content: space-between; margin-top: 8px; }
+.ed-tips { background: #f4f1ea; border-radius: var(--radius-m); color: #4a453f; font-size: 13px; line-height: 1.6; margin: 16px 0 20px; padding: 14px 18px 14px 32px; }
+.ed-tips li + li { margin-top: 4px; }
+.ed-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.ed-actions .button { padding-inline: 18px; }
+
+.ed-preview {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-s);
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  position: sticky;
+  top: 0;
+}
+.ed-preview .eyebrow { margin-bottom: 4px; }
+.ed-preview img { aspect-ratio: 4 / 3; border-radius: var(--radius-m); object-fit: cover; width: 100%; }
+.ed-preview strong { font-size: 16px; }
+#ed-prev-price { color: var(--green); font-size: 15px; font-weight: 700; }
+#ed-prev-desc { color: #4a453f; font-size: 13px; line-height: 1.7; margin: 4px 0 0; overflow-wrap: anywhere; }
+
+/* ---------- Fiche produit : lien « Modifier » ---------- */
+.pm-edit { margin-top: 18px; }
+.pm-edit[hidden] { display: none; }
+
+/* ---------- Fenêtre « Modifier le produit » ---------- */
+.pe-panel { max-width: 600px; }
+.pe-top { align-items: center; display: flex; gap: 14px; margin-bottom: 20px; }
+.pe-top img { border-radius: var(--radius-m); height: 64px; object-fit: cover; width: 64px; }
+.pe-top img[hidden] { display: none; }
+.pe-top strong, .pe-top small { display: block; }
+.pe-top small { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.pe-final { color: var(--green); font-size: 14px; font-weight: 600; margin: 0 0 8px; min-height: 20px; }
+
+/* ---------- Admin > Personnel : rédacteurs ---------- */
+.ed-team { border-top: 1px solid var(--line); margin-top: 28px; padding-top: 22px; }
+.ed-team-head h4 { font-family: var(--serif); font-size: 24px; font-weight: 500; letter-spacing: -.03em; margin: 0 0 14px; }
+.ed-team-row {
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+}
+.ed-team-row strong, .ed-team-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-team-row small { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.ed-team-row .space-role { margin-top: 0; }
+
+/* Identifiants du compte créé */
+.ed-created { background: #e7efe8; border: 1px solid #bcd6c3; border-radius: var(--radius-m); display: grid; gap: 6px; margin: 4px 0 18px; padding: 14px 16px; }
+.ed-created strong { align-items: center; color: var(--green); display: flex; font-size: 14px; gap: 8px; }
+.ed-created span { font-size: 13px; }
+.ed-created code { background: var(--white); border-radius: var(--radius-s); font-family: var(--mono); font-size: 18px; letter-spacing: .08em; padding: 8px 12px; width: fit-content; }
+.ed-created small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.ed-created .space-mini { justify-self: start; }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 800px) {
+  .ed-grid { grid-template-columns: 1fr; }
+  .ed-preview { position: static; }
+  .ed-row { grid-template-columns: 56px minmax(0, 1fr); }
+  .ed-row > img { height: 56px; width: 56px; }
+  .ed-side { align-items: center; flex-direction: row; flex-wrap: wrap; grid-column: 1 / -1; justify-content: space-between; }
+  .ed-side small { max-width: none; text-align: left; }
+  .ed-team-row { grid-template-columns: auto minmax(0, 1fr); }
+  .ed-team-row .space-role, .ed-team-row .space-mini { grid-column: 2; justify-self: start; }
+}
+
+/* ---------- Description verrouillée (tous sauf le rédacteur) ---------- */
+textarea.ed-locked, .form-panel textarea.ed-locked, #pe-desc.ed-locked {
+  background: #efebe4;
+  border-color: #ddd6ca;
+  color: #8b857c;
+  cursor: not-allowed;
+  opacity: 1;
+  resize: none;
+}
+textarea.ed-locked::placeholder { color: #a39c91; font-style: italic; }
+.ed-lock-note { align-items: center; color: var(--muted); display: flex; font-size: 12px; font-weight: 500; gap: 6px; margin-top: 8px; }
+.ed-lock-note i { color: var(--orange); font-size: 13px; }
