@@ -1414,26 +1414,88 @@ const trackingModal = document.createElement("section");
 trackingModal.className = "modal";
 trackingModal.id = "tracking-modal";
 trackingModal.setAttribute("aria-hidden", "true");
+trackingModal.setAttribute("role", "dialog");
+trackingModal.setAttribute("aria-modal", "true");
+trackingModal.setAttribute("aria-labelledby", "tracking-modal-title");
 trackingModal.innerHTML =
-  '<div class="modal-panel tracking-panel"><div class="modal-header"><div><p class="eyebrow">Suivi de commande</p><h2>Votre livraison</h2></div><button class="close-button tracking-close" aria-label="Fermer le suivi">×</button></div><div class="tracking-details"></div></div>';
+  '<div class="modal-panel tracking-panel"><div class="modal-header"><div><p class="eyebrow">SUIVI DE COMMANDE</p><h2 id="tracking-modal-title">Suivre votre commande</h2></div><button type="button" class="close-button tracking-close" aria-label="Fermer le suivi">×</button></div><div class="tracking-details" aria-live="polite"></div></div>';
 document.body.append(trackingModal);
 trackingModal
   .querySelector(".tracking-close")
   .addEventListener("click", () => closeModal(trackingModal));
-function openOrderTracking(order) {
-  if (!order) return showToast("Aucune commande à suivre pour le moment.");
-  const steps = [
-    "Nouvelle commande",
-    "Validée",
-    "En préparation",
-    "Expédiée",
-    "Livrée",
-  ];
-  const currentStep = Math.max(0, steps.indexOf(order.status));
-  trackingModal.querySelector(".tracking-details").innerHTML =
-    `<div class="tracking-summary"><strong>#${order.id}</strong><span>${euro(order.total)}</span></div><p class="modal-muted">Client : ${order.buyerName || currentUser?.name || "Client"}</p><div class="tracking-steps">${steps.map((step, index) => `<div class="tracking-step ${index <= currentStep ? "complete" : ""}"><span>${index <= currentStep ? "✓" : index + 1}</span><strong>${step}</strong></div>`).join("")}</div>`;
-  openModal(trackingModal);
+trackingModal.addEventListener("click", (event) => {
+  if (event.target === trackingModal) closeModal(trackingModal);
+});
+function trackingEscape(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;",
+  })[character]);
 }
+function openOrderTracking(orderOrId) {
+  try {
+    // Recharge l'état enregistré pour ne jamais afficher un ancien statut.
+    try {
+      const savedOrders = JSON.parse(localStorage.getItem("etokiana-orders") || "[]");
+      if (Array.isArray(savedOrders)) orders = savedOrders;
+    } catch (error) {
+      console.warn("Les commandes enregistrées n'ont pas pu être relues.", error);
+    }
+    const requestedId = orderOrId && typeof orderOrId === "object" ? orderOrId.id : orderOrId;
+    const order = orders.find((candidate) => String(candidate.id) === String(requestedId))
+      || (orderOrId && typeof orderOrId === "object" ? orderOrId : null);
+    if (!order) {
+      showToast("Aucune commande correspondante n'a été trouvée.");
+      return false;
+    }
+
+    const steps = ["Nouvelle commande", "Validée", "En préparation", "Expédiée", "Livrée"];
+    const normalizedStatus = String(order.status || "Nouvelle commande").toLocaleLowerCase("fr-FR");
+    const cancelled = normalizedStatus.includes("annul");
+    let currentStep = 0;
+    if (normalizedStatus.includes("livr")) currentStep = 4;
+    else if (normalizedStatus.includes("expédi") || normalizedStatus.includes("expedi")) currentStep = 3;
+    else if (normalizedStatus.includes("préparation") || normalizedStatus.includes("preparation")) currentStep = 2;
+    else if (normalizedStatus.includes("valid")) currentStep = 1;
+
+    const date = order.date ? new Date(order.date) : null;
+    const dateLabel = date && !Number.isNaN(date.getTime())
+      ? date.toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })
+      : "Date non renseignée";
+    const items = Array.isArray(order.items) ? order.items : [];
+    const itemRows = items.map((item) => {
+      const quantity = Math.max(1, Number(item.quantity) || 1);
+      const itemName = trackingEscape(item.name || "Article");
+      const color = item.selectedColor || item.color || item.variant?.color;
+      const size = item.selectedSize || item.size || item.variant?.size;
+      const options = [color ? `Couleur : ${trackingEscape(color)}` : "", size ? `Taille / format : ${trackingEscape(size)}` : ""].filter(Boolean);
+      const amount = (Number(item.salePrice) || Number(item.price) || 0) * quantity;
+      return `<div class="tracking-item"><div><strong>${itemName}</strong><small>Qté ${quantity}${options.length ? ` · ${options.join(" · ")}` : ""}</small></div><b>${euro(amount)}</b></div>`;
+    }).join("");
+    const timeline = steps.map((step, index) => {
+      const done = !cancelled && index < currentStep;
+      const current = !cancelled && index === currentStep;
+      return `<div class="tracking-step ${done ? "complete" : ""} ${current ? "current" : ""}" ${current ? 'aria-current="step"' : ""}><span>${done ? "✓" : index + 1}</span><div><strong>${step}</strong><small>${done ? "Étape terminée" : current ? "Statut actuel" : "À venir"}</small></div></div>`;
+    }).join("");
+    const statusLabel = trackingEscape(order.status || "Nouvelle commande");
+    const statusClass = cancelled ? "is-cancelled" : currentStep === 4 ? "is-delivered" : currentStep === 3 ? "is-shipped" : currentStep >= 1 ? "is-progress" : "is-new";
+    trackingModal.querySelector(".tracking-details").innerHTML = `
+      <div class="tracking-summary"><div><small>NUMÉRO DE COMMANDE</small><strong>#${trackingEscape(order.id)}</strong><small>Passée le ${trackingEscape(dateLabel)}</small></div><div class="tracking-summary-total"><small>Montant total</small><strong>${euro(Number(order.total) || 0)}</strong></div></div>
+      <div class="tracking-status-banner ${statusClass}"><span class="tracking-status-dot"></span><div><small>STATUT ACTUEL</small><strong>${statusLabel}</strong></div></div>
+      ${cancelled ? '<p class="tracking-cancel-note"><i class="bi bi-info-circle" aria-hidden="true"></i> Cette commande est annulée. La progression de livraison est arrêtée.</p>' : ''}
+      <section class="tracking-progress-section"><h3>Progression de la commande</h3><div class="tracking-steps">${timeline}</div></section>
+      <section class="tracking-items-section"><div class="tracking-section-heading"><h3>Articles commandés</h3><span>${items.length} article(s) référencé(s)</span></div>${itemRows || '<p class="modal-muted">Le détail des articles n’est pas disponible.</p>'}</section>
+      <div class="tracking-footer-note"><i class="bi bi-shield-check" aria-hidden="true"></i><span>Le suivi reflète le dernier statut enregistré par la boutique.</span></div>`;
+    openModal(trackingModal);
+    trackingModal.querySelector(".tracking-close")?.focus({ preventScroll: true });
+    return true;
+  } catch (error) {
+    console.error("Ouverture du suivi de commande impossible", error);
+    showToast("Le suivi de cette commande n'a pas pu être ouvert. Réessayez.");
+    return false;
+  }
+}
+// Point d'entrée explicite pour les boutons générés dans les espaces utilisateur.
+window.openOrderTracking = openOrderTracking;
 
 function filteredProducts() {
   const filtered = products.filter((product) => {
@@ -1844,19 +1906,36 @@ function updateProfileButton() {
 }
 
 function renderAccountData() {
+  const normalizedBuyerEmail = String(currentUser?.email || "").trim().toLocaleLowerCase("fr-FR");
   const userOrders = orders.filter(
-    (order) => order.buyerId === currentUser?.email,
+    (order) => String(order.buyerId || "").trim().toLocaleLowerCase("fr-FR") === normalizedBuyerEmail,
   );
   const orderView = document.querySelector('[data-view="orders"]');
   const savedView = document.querySelector('[data-view="saved"]');
   const overview = document.querySelector('[data-view="overview"]');
   if (overview) {
-    const latestOrder = userOrders.slice().reverse()[0];
-    overview
-      .querySelectorAll(".account-card")[1]
-      .querySelector("p").textContent = latestOrder
-      ? `Commande #${latestOrder.id} · ${latestOrder.status}`
+    const latestOrder = userOrders.slice().sort((a, b) => {
+      const dateA = new Date(a.date || 0).getTime() || 0;
+      const dateB = new Date(b.date || 0).getTime() || 0;
+      return dateB - dateA;
+    })[0];
+    const latestOrderCard = overview.querySelectorAll(".account-card")[1];
+    const latestOrderText = latestOrderCard?.querySelector("p");
+    const latestOrderButton = latestOrderCard?.querySelector("[data-track-latest-order]");
+    if (latestOrderText) latestOrderText.textContent = latestOrder
+      ? `Commande #${latestOrder.id} · ${latestOrder.status || "Nouvelle commande"}`
       : "Aucune commande enregistrée pour le moment";
+    if (latestOrderButton) {
+      if (latestOrder) {
+        latestOrderButton.dataset.orderId = String(latestOrder.id);
+        latestOrderButton.disabled = false;
+        latestOrderButton.setAttribute("aria-label", `Suivre la commande ${latestOrder.id}`);
+      } else {
+        delete latestOrderButton.dataset.orderId;
+        latestOrderButton.disabled = false;
+        latestOrderButton.setAttribute("aria-label", "Aucune commande à suivre");
+      }
+    }
   }
   if (orderView)
     orderView.innerHTML = userOrders.length
@@ -2028,9 +2107,8 @@ const DEFAULT_PRODUCT_DESCRIPTION =
   "Une pièce choisie pour son usage, sa qualité et sa capacité à trouver naturellement sa place dans votre quotidien.";
 function isEditorUser(user = currentUser) {
   const role = String(user?.role || "").toLowerCase();
-  return ["redac", "rédac", "editor", "writer", "journalist", "content"].some(
-    (key) => role.includes(key),
-  );
+  if (role === "staff" && (user?.staffRoleKey === "editor" || user?.staffPermissions?.includes("content.edit"))) return true;
+  return ["redac", "rédac", "editor", "writer", "journalist", "content"].some((key) => role.includes(key));
 }
 function productStock(product) {
   if (Number.isFinite(Number(product?.stock)) && product.stock !== "" && product.stock != null)
@@ -2542,12 +2620,23 @@ document
         showToast("Adresse de livraison mise à jour.");
       }
     }
-    if (action.textContent.includes("Suivre")) {
-      const latestOrder = orders
-        .filter((order) => order.buyerId === currentUser.email)
+    if (action.matches("[data-track-latest-order]") || action.textContent.includes("Suivre")) {
+      const buyerEmail = String(currentUser.email || "").trim().toLocaleLowerCase("fr-FR");
+      let savedOrders = orders;
+      try {
+        const parsed = JSON.parse(localStorage.getItem("etokiana-orders") || "[]");
+        if (Array.isArray(parsed)) savedOrders = parsed;
+      } catch (_) {}
+      orders = savedOrders;
+      const latestOrder = savedOrders
+        .filter((order) => String(order.buyerId || "").trim().toLocaleLowerCase("fr-FR") === buyerEmail)
         .slice()
-        .reverse()[0];
-      openOrderTracking(latestOrder);
+        .sort((a, b) => (new Date(b.date || 0).getTime() || 0) - (new Date(a.date || 0).getTime() || 0))[0];
+      if (latestOrder) openOrderTracking(latestOrder.id);
+      else {
+        showToast("Vous n'avez pas encore de commande à suivre.");
+        document.querySelector('[data-account-view="orders"]')?.click();
+      }
     }
   });
 document
@@ -2556,7 +2645,7 @@ document
     const action = event.target.closest("[data-track-order]");
     if (!action) return;
     openOrderTracking(
-      orders.find((order) => order.id === action.dataset.trackOrder),
+      orders.find((order) => String(order.id) === String(action.dataset.trackOrder)),
     );
   });
 document.querySelector(".admin-content").addEventListener("click", (event) => {
@@ -2843,7 +2932,12 @@ document.querySelector("#login-form").addEventListener("submit", (event) => {
       "E-mail ou mot de passe incorrect.";
     return;
   }
-  const registeredUser = registeredUsers.find((user) => user.email === email);
+  const registeredUser = registeredUsers.find((user) => String(user.email || "").trim().toLowerCase() === email);
+  if (registeredUser?.role === "staff" && registeredUser.active === false) {
+    document.querySelector("#login-error").textContent =
+      "L’accès à cet espace personnel est suspendu. Contactez l’administration.";
+    return;
+  }
   currentUser = registeredUser
     ? { ...registeredUser, role: registeredUser.role || "client" }
     : { email, role: account.role, name: account.name, id: account.id };
@@ -2921,6 +3015,7 @@ function canManageProduct(product, user = currentUser) {
   if (!product || !user) return false;
   const role = String(user.role || "").toLowerCase();
   if (["owner", "admin", "administrator", "superadmin", "super-admin"].includes(role)) return true;
+  if (role === "staff") return Array.isArray(user.staffPermissions) && user.staffPermissions.includes("products.manage");
   return role === "seller" && String(product.sellerId) === String(user.id);
 }
 function refreshProductsAndUserSpace() {
@@ -3143,10 +3238,114 @@ updateProductReferencePreview();
 document.querySelector("#staff-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const name = document.querySelector("#new-staff-name").value.trim();
-  const role = document.querySelector("#new-staff-role").value;
+  const email = document.querySelector("#new-staff-email").value.trim().toLowerCase();
+  const roleSelect = document.querySelector("#new-staff-role");
+  const staffRoleKey = roleSelect?.value || "logistics";
+  const roleCatalog = window.EtoStaffRoles?.catalog || {};
+  const roleMeta = roleCatalog[staffRoleKey];
+  const customRole = document.querySelector("#new-staff-custom-role")?.value.trim();
+  const staffRole = staffRoleKey === "custom" ? customRole : (roleMeta?.label || roleSelect?.selectedOptions?.[0]?.textContent.trim() || "Équipe");
+  const customPermissions = Array.from(document.querySelectorAll("[data-staff-permission-check]:checked")).map((box) => box.value);
+  const staffPermissions = staffRoleKey === "custom" ? [...new Set(customPermissions)] : (roleMeta?.permissions || ["dashboard.read"]);
+  if (!name || !email) return;
+  if (staffRoleKey === "custom" && !staffRole) {
+    showToast("Donnez un nom au rôle personnalisé.");
+    document.querySelector("#new-staff-custom-role")?.focus();
+    return;
+  }
+  if (!staffPermissions.length) {
+    showToast("Sélectionnez au moins une autorisation pour ce rôle.");
+    return;
+  }
+
+  const inviteModal = document.querySelector("#staff-form-modal");
+  const invitationOrigin = inviteModal?.dataset.staffOpenOrigin || "admin";
+  const registeredUsers = JSON.parse(localStorage.getItem("etokiana-users") || "[]");
+  const invitations = (() => {
+    try { return JSON.parse(localStorage.getItem("etokiana-staff-invitations") || "[]"); }
+    catch (_) { return []; }
+  })();
+  const editType = inviteModal?.dataset.staffEditType;
+  const editId = inviteModal?.dataset.staffEditId;
+  if (editType && editId) {
+    const currentTypeEmailMatch = (item, type) => type === editType && String(item.id ?? item.email) === String(editId);
+    const emailTakenByAccount = registeredUsers.some(user => String(user.email||'').trim().toLowerCase()===email && !(editType==='account' && currentTypeEmailMatch(user,'account')));
+    const emailTakenByInvitation = invitations.some(item => String(item.email||'').trim().toLowerCase()===email && !(editType==='invitation' && String(item.id)===String(editId)));
+    const reservedEmails = ["client@etokiana.fr", "admin@etokiana.fr", "vendeur@etokiana.fr"];
+    if (emailTakenByAccount || emailTakenByInvitation || reservedEmails.includes(email)) { showToast("Cette adresse e-mail est déjà utilisée par un autre compte ou une invitation."); return; }
+    const roleData = { name, email, role:"staff", staffRole, staffRoleKey, staffPermissions, updatedAt:new Date().toISOString() };
+    if (editType === "invitation") {
+      const target = invitations.find(item => String(item.id) === String(editId));
+      if (!target) { showToast("Invitation introuvable."); return; }
+      Object.assign(target, roleData);
+      localStorage.setItem("etokiana-staff-invitations", JSON.stringify(invitations));
+    } else {
+      const target = registeredUsers.find(user => String(user.id ?? user.email) === String(editId) && String(user.role||'').toLowerCase()==='staff');
+      if (!target) { showToast("Membre introuvable."); return; }
+      const previousEmail = String(target.email||'').toLowerCase();
+      Object.assign(target, roleData);
+      localStorage.setItem("etokiana-users", JSON.stringify(registeredUsers));
+      const signedIn = JSON.parse(localStorage.getItem("etokiana-user") || "null");
+      if (signedIn && String(signedIn.email||'').toLowerCase() === previousEmail) { Object.assign(signedIn, roleData); localStorage.setItem("etokiana-user", JSON.stringify(signedIn)); }
+    }
+    delete inviteModal.dataset.staffEditType; delete inviteModal.dataset.staffEditId; delete inviteModal.dataset.staffOpenOrigin;
+    event.target.reset();
+    document.querySelector("#staff-form-title").textContent = "Ajouter un membre";
+    const submitButton = event.target.querySelector('button[type="submit"]'); if (submitButton) submitButton.innerHTML = 'Créer l’invitation et préparer l’e-mail <i class="bi bi-envelope-arrow-up" aria-hidden="true"></i>';
+    if (window.EtoStaffRoles?.syncFormPreview) window.EtoStaffRoles.syncFormPreview();
+    closeModal(inviteModal); window.EtoStaffDirectory?.refresh?.(); window.dispatchEvent(new CustomEvent("etokiana-staff-changed"));
+    showToast(`Les informations de ${name} ont été mises à jour.`); return;
+  }
+  const reservedEmails = ["client@etokiana.fr", "admin@etokiana.fr", "vendeur@etokiana.fr"];
+  if (registeredUsers.some((user) => String(user.email || "").trim().toLowerCase() === email) || reservedEmails.includes(email)) {
+    showToast("Cette adresse e-mail est déjà associée à un compte.");
+    return;
+  }
+  if (invitations.some((item) => String(item.email || "").trim().toLowerCase() === email)) {
+    showToast("Une invitation ou une entrée pour cette adresse existe déjà.");
+    return;
+  }
+  const invitation = {
+    id: `staff-invite-${Date.now()}`,
+    name,
+    email,
+    role: "staff",
+    staffRole,
+    staffRoleKey,
+    staffPermissions,
+    invitationStatus: "pending",
+    active: false,
+    createdAt: new Date().toISOString(),
+    invitationReference: `ETK-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+  };
+  invitations.push(invitation);
+  localStorage.setItem("etokiana-staff-invitations", JSON.stringify(invitations));
   event.target.reset();
+  if (window.EtoStaffRoles?.syncFormPreview) window.EtoStaffRoles.syncFormPreview();
   closeModal(document.querySelector("#staff-form-modal"));
-  showToast(`Invitation envoyée à ${name} · ${role}`);
+  if (inviteModal) { delete inviteModal.dataset.staffOpenOrigin; delete inviteModal.dataset.staffEditType; delete inviteModal.dataset.staffEditId; }
+  document.querySelector("#staff-form-title").textContent = "Ajouter un membre";
+  const staffSubmitButton = document.querySelector('#staff-form button[type="submit"]'); if (staffSubmitButton) staffSubmitButton.innerHTML = 'Créer l’invitation et préparer l’e-mail <i class="bi bi-envelope-arrow-up" aria-hidden="true"></i>';
+  const adminModal = document.querySelector("#admin-modal");
+  if (invitationOrigin === "user-space" && typeof window.renderPremiumUserSpace === "function") {
+    window.renderPremiumUserSpace();
+    document.querySelector('.user-space-nav[data-user-view="staff"]')?.click();
+  } else {
+    const userSpaceModal = document.querySelector("#user-space-modal");
+    if (userSpaceModal && !userSpaceModal.hidden) {
+      userSpaceModal.hidden = true;
+      userSpaceModal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("user-space-open");
+    }
+    if (adminModal) openModal(adminModal);
+    if (typeof activateAdminView === "function") activateAdminView("staff");
+  }
+  window.EtoStaffDirectory?.refresh?.();
+  window.dispatchEvent(new CustomEvent("etokiana-staff-changed"));
+  const opened = window.EtoStaffRoles?.openEmailDraft?.(invitation) || false;
+  showToast(opened
+    ? `Invitation préparée pour ${name} · ${staffRole}. Vérifiez le brouillon puis cliquez sur Envoyer.`
+    : `Invitation enregistrée pour ${name}. Votre logiciel e-mail n’a pas pu être ouvert automatiquement.`);
 });
 const customerDetails = [
   ["alex@exemple.fr", "06 12 34 56 78", "12 rue des Lilas, Paris"],
