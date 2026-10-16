@@ -510,7 +510,246 @@ products = products.map((product) => {
     categoryPath,
   };
 });
-localStorage.setItem("etokiana-products", JSON.stringify(products));
+
+// Référence métier structurée : catégorie, sous-catégorie, produit, vendeur,
+// options de couleur/taille et suffixe séquentiel garantissant l'unicité.
+function productReferenceNumber(reference) {
+  const value = String(reference || "").trim().toUpperCase();
+  const composite = value.match(/-(\d{4,})$/);
+  if (composite) return Number(composite[1]);
+  const legacy = value.match(/^ETK-(\d+)$/);
+  return legacy ? Number(legacy[1]) : 0;
+}
+function formatProductReference(number) {
+  return String(number).padStart(4, "0");
+}
+function referenceAscii(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim();
+}
+function referenceToken(value, maxLength = 3, fallback = "GEN") {
+  const compact = referenceAscii(value).replace(/\s+/g, "");
+  return compact.slice(0, maxLength) || fallback;
+}
+function productNameReferenceToken(name) {
+  const words = referenceAscii(name).split(/\s+/).filter(Boolean);
+  if (!words.length) return "PROD";
+  if (words.length === 1) return words[0].slice(0, 6) || "PROD";
+  return words.slice(0, 2).map((word) => word.slice(0, 3)).join("").slice(0, 6) || "PROD";
+}
+function productCategoryReferenceToken(categoryPath, category) {
+  const root = String((categoryPath && categoryPath[0]) || category || "");
+  const norm = referenceAscii(root);
+  const known = [
+    [/PRET A PORTER|MODE/, "MOD"],
+    [/MAISON|DECORATION/, "MAI"],
+    [/ELECTRONIQUE|HIGH TECH|TECHNOLOG/, "TEC"],
+    [/EPICERIE|ALIMENTAIRE|GROCERY/, "ALI"],
+    [/SERVICE|RESERVATION/, "SER"],
+    [/LOISIR|SPORT|JEU/, "LOI"],
+    [/BEAUTE|BIEN ETRE|COSMET/, "BEA"],
+    [/BEBE|ENFANT/, "ENF"],
+    [/AUTO|MOTO|VEHICULE/, "AUT"],
+    [/JARDIN|EXTERIEUR/, "JAR"],
+  ];
+  const match = known.find(([pattern]) => pattern.test(norm));
+  return match ? match[1] : referenceToken(root, 3, "CAT");
+}
+function productSellerReferenceToken(sellerId) {
+  const id = String(sellerId || "owner");
+  if (id === "owner" || id === "admin" || id === "superadmin") return "ETK";
+  if (id === "demo-seller") return "ANM";
+  let seller = null;
+  try {
+    const users = JSON.parse(localStorage.getItem("etokiana-users") || "[]");
+    seller = users.find((user) => String(user.id) === id) || null;
+    if (!seller) {
+      const active = JSON.parse(localStorage.getItem("etokiana-user") || "null");
+      if (active && String(active.id) === id) seller = active;
+    }
+  } catch (_) { /* Une fiche vendeur absente ne doit pas empêcher la référence. */ }
+  const sellerName = seller?.shopName || seller?.storeName || seller?.boutique || seller?.name || id;
+  const words = referenceAscii(sellerName).split(/\s+/).filter(Boolean);
+  if (words.length >= 3) return words.slice(0, 3).map((part) => part[0]).join("");
+  if (words.length === 2) return (words[0][0] + words[1][0] + (words[0][1] || words[1][1] || "X")).slice(0, 3);
+  return referenceToken(sellerName, 3, "VEN");
+}
+function productOptionList(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  return String(value || "").split(/[,;\n]+/).map((item) => item.trim()).filter(Boolean);
+}
+const productColorPalette = [
+  { value: "Noir", color: "#252525" },
+  { value: "Blanc", color: "#FFFFFF" },
+  { value: "Rouge", color: "#D94A4A" },
+  { value: "Bleu", color: "#3979D5" },
+  { value: "Vert", color: "#3D8A5D" },
+  { value: "Vert sauge", color: "#A7B7A0" },
+  { value: "Rose", color: "#E59AB7" },
+  { value: "Jaune", color: "#E6C34D" },
+  { value: "Orange", color: "#E8873B" },
+  { value: "Violet", color: "#8C69C8" },
+  { value: "Beige", color: "#D9C5A4" },
+  { value: "Marron", color: "#8C5F48" },
+  { value: "Gris", color: "#8E9299" },
+  { value: "Doré", color: "#C9A64E" },
+  { value: "Argenté", color: "#BFC6CC" },
+  { value: "Multicolore", color: "conic-gradient(#e74c3c, #f1c40f, #2ecc71, #3498db, #9b59b6, #e74c3c)" },
+];
+function productSizePalette(categoryPath = []) {
+  const path = referenceAscii((categoryPath || []).join(" "));
+  if (/CHAUSSURE|BASKET|TALON|BOTTINE|SANDALE|MOCASSIN/.test(path)) {
+    return ["35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"];
+  }
+  if (/SAC|BIJOU|ECHARPE|ACCESSOIRE|MONTRE|COQUE|CHARGEUR|COMPOSANT|CASQUE|ENCEINTE/.test(path)
+      && !/CHAUSSURE|BASKET|TALON|BOTTINE|SANDALE|MOCASSIN/.test(path)) {
+    return ["Unique", "Petit", "Moyen", "Grand"];
+  }
+  if (/SMARTPHONE|TELEPHONIE|TELEPHONE|MOBILE/.test(path)) {
+    return ["64 Go", "128 Go", "256 Go", "512 Go", "1 To"];
+  }
+  if (/ORDINATEUR|INFORMATIQUE|ECRAN|TELEVISEUR|AUDIO VIDEO/.test(path)) {
+    return ["13 pouces", "14 pouces", "15 pouces", "16 pouces", "21 pouces", "24 pouces", "27 pouces", "32 pouces", "43 pouces", "55 pouces", "65 pouces"];
+  }
+  if (/VETEMENT|VETEMENTS|ROBE|PANTALON|CHEMISE|TSHIRT|T SHIRT|TOP|JEAN|TEXTILE/.test(path)) {
+    return ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "34", "36", "38", "40", "42", "44", "46", "48", "50", "52"];
+  }
+  if (/CANAPE|TABLE|CHAISE|LIT|RIDEAU|COUSSIN|LINGE|MOBILIER|MAISON|DECORATION/.test(path)) {
+    return ["Unique", "Petit", "Moyen", "Grand", "90 × 190 cm", "140 × 190 cm", "160 × 200 cm", "180 × 200 cm"];
+  }
+  return ["Unique", "XS", "S", "M", "L", "XL", "Petit", "Moyen", "Grand"];
+}
+function getPaletteColor(value) {
+  const normalized = referenceAscii(value);
+  return productColorPalette.find((item) => referenceAscii(item.value) === normalized)?.color || "#D6D6CE";
+}
+function createVariantChoiceButton({ kind, value, selected, detail = false, onToggle }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = detail ? "pd-choice-button" : "variant-choice";
+  button.classList.toggle("is-selected", Boolean(selected));
+  button.setAttribute("aria-pressed", String(Boolean(selected)));
+  button.setAttribute("aria-label", `${value}${selected ? ", sélectionné" : ""}`);
+  button.title = value;
+  if (kind === "color") {
+    const swatch = document.createElement("span");
+    swatch.className = "variant-color-swatch";
+    const color = getPaletteColor(value);
+    swatch.style.setProperty("--swatch-color", color);
+    swatch.style.background = color;
+    swatch.setAttribute("aria-hidden", "true");
+    button.append(swatch);
+  }
+  const label = document.createElement("span");
+  label.textContent = value;
+  button.append(label);
+  button.addEventListener("click", () => onToggle?.(value));
+  return button;
+}
+function appendUnknownVariantOptions(presets, selected) {
+  const options = [...presets];
+  selected.forEach((value) => {
+    if (!options.some((option) => referenceAscii(option.value || option) === referenceAscii(value))) options.push(value);
+  });
+  return options;
+}
+
+function productOptionReferenceToken(values, noneToken = "NA") {
+  const options = productOptionList(values);
+  if (!options.length) return noneToken;
+  if (options.length > 1) return "VAR";
+  return referenceToken(options[0], 3, noneToken);
+}
+function productReferenceBase(product = {}) {
+  const categoryPath = Array.isArray(product.categoryPath) && product.categoryPath.length
+    ? product.categoryPath
+    : [product.category || "Général"];
+  const subcategory = categoryPath.length > 1 ? categoryPath[categoryPath.length - 1] : "Général";
+  return [
+    productCategoryReferenceToken(categoryPath, product.category),
+    referenceToken(subcategory, 3, "GEN"),
+    productNameReferenceToken(product.name),
+    productSellerReferenceToken(product.sellerId),
+    productOptionReferenceToken(product.availableColors || product.colors, "NC"),
+    productOptionReferenceToken(product.availableSizes || product.sizes, "NT"),
+  ].join("-");
+}
+function productReferenceUsedSet(exceptId = null) {
+  return new Set(products
+    .filter((item) => exceptId === null || String(item.id) !== String(exceptId))
+    .map((item) => String(item.reference || item.sku || "").trim().toUpperCase())
+    .filter(Boolean));
+}
+function findNextProductReference(product, commit = false) {
+  const used = productReferenceUsedSet(product?.id ?? null);
+  let number = Math.max(
+    Number(localStorage.getItem("etokiana-product-reference-sequence") || 0),
+    ...products.map((item) => productReferenceNumber(item.reference || item.sku)),
+  );
+  let candidate;
+  do {
+    number += 1;
+    candidate = `${productReferenceBase(product)}-${formatProductReference(number)}`;
+  } while (used.has(candidate.toUpperCase()));
+  if (commit) localStorage.setItem("etokiana-product-reference-sequence", String(number));
+  return candidate;
+}
+function assignMissingProductReferences(list) {
+  const used = new Set();
+  list.forEach((product) => {
+    const supplied = String(product.reference || product.sku || product.productReference || "").trim().toUpperCase();
+    if (supplied && !used.has(supplied)) {
+      product.reference = supplied;
+      used.add(supplied);
+    } else {
+      product.reference = "";
+    }
+  });
+  list.forEach((product) => {
+    if (product.reference) return;
+    const id = Number(product.id);
+    if (Number.isSafeInteger(id) && id > 0 && id <= 9999) {
+      const candidate = `ETK-${formatProductReference(id)}`;
+      if (!used.has(candidate)) {
+        product.reference = candidate;
+        used.add(candidate);
+      }
+    }
+  });
+  let nextNumber = Math.max(0, ...Array.from(used, productReferenceNumber));
+  list.forEach((product) => {
+    if (product.reference) return;
+    let candidate;
+    do {
+      nextNumber += 1;
+      candidate = `ETK-${formatProductReference(nextNumber)}`;
+    } while (used.has(candidate));
+    product.reference = candidate;
+    used.add(candidate);
+  });
+}
+assignMissingProductReferences(products);
+const maxAssignedProductReference = Math.max(
+  0,
+  ...products.map((product) => productReferenceNumber(product.reference)),
+);
+const savedProductReferenceSequence = Number(
+  localStorage.getItem("etokiana-product-reference-sequence") || 0,
+);
+localStorage.setItem(
+  "etokiana-product-reference-sequence",
+  String(Math.max(savedProductReferenceSequence, maxAssignedProductReference)),
+);
+window.getProductReference = function (product) {
+  return String(product?.reference || product?.sku || "Référence indisponible");
+};
+function nextProductReference(product) {
+  return findNextProductReference(product, true);
+}
 
 function populateCategorySelects() {
   const groupedPaths = catalogCategoryPaths.reduce((groups, path) => {
@@ -791,13 +1030,67 @@ function sellerEmail(sellerId) {
     (user) => user.id === sellerId,
   )?.email;
 }
-const identityButton = document.createElement("button");
-identityButton.className = "identity-button";
-identityButton.type = "button";
-identityButton.title = "Voir l’identité de l’utilisateur";
-identityButton.innerHTML =
-  '<span class="identity-avatar" aria-hidden="true"><span id="identity-initials">U</span><span class="identity-role-icon" id="identity-role-icon"></span></span>';
-document.querySelector("#profile-button").after(identityButton);
+
+// Une migration unique remplace l'ancien format ETK-0001 par un code composite.
+// Les références déjà structurées restent inchangées ; les nouveaux produits
+// utilisent ensuite le même format avec un suffixe séquentiel unique.
+function migrateLegacyProductReferences() {
+  const reserved = new Set(products
+    .filter((product) => !/^ETK-\d+$/i.test(String(product.reference || "")))
+    .map((product) => String(product.reference || "").toUpperCase())
+    .filter(Boolean));
+  let sequence = Math.max(
+    Number(localStorage.getItem("etokiana-product-reference-sequence") || 0),
+    ...products.map((product) => productReferenceNumber(product.reference)),
+  );
+  products.forEach((product) => {
+    const oldReference = String(product.reference || "").trim().toUpperCase();
+    const legacyMatch = oldReference.match(/^ETK-(\d+)$/);
+    if (!legacyMatch) {
+      if (oldReference) reserved.add(oldReference);
+      return;
+    }
+    // Récupération prudente de quelques options uniquement sur les fiches historiques
+    // qui n'avaient pas encore de champs couleur/taille dédiés.
+    const material = referenceAscii(product.material || "");
+    const pathText = referenceAscii((product.categoryPath || [product.category || ""]).join(" "));
+    if (!productOptionList(product.availableColors || product.colors).length) {
+      const knownColors = [
+        [/(VERT SAUGE)/, "Vert sauge"], [/(NOIR)/, "Noir"], [/(BLANC|BLANCHE)/, "Blanc"],
+        [/(ROUGE)/, "Rouge"], [/(BLEU|BLEUE)/, "Bleu"], [/(ROSE)/, "Rose"],
+        [/(BEIGE)/, "Beige"], [/(GRIS|GRISE)/, "Gris"], [/(MARRON)/, "Marron"],
+        [/(VIOLET|VIOLETTE)/, "Violet"], [/(JAUNE)/, "Jaune"], [/(DOR[EÉ])/, "Doré"],
+        [/(ARGENT[EÉ])/, "Argenté"], [/(NATUREL|NATURELLE)/, "Naturel"],
+      ];
+      const detected = knownColors.find(([pattern]) => pattern.test(material));
+      if (detected && isVariantRelevantCategory(product.categoryPath || [product.category || ""])) product.availableColors = [detected[1]];
+    }
+    if (!productOptionList(product.availableSizes || product.sizes).length && /MODE|VETEMENT|CHAUSSURE|ROBE|PANTALON|CHEMISE|TSHIRT|JEAN|BASKET|TALON|BOTTINE/.test(pathText)) {
+      const sizeMatch = material.match(/(?:^| )((?:XXS|XS|S|M|L|XL|XXL|XXXL|[0-9]{2}))$/);
+      if (sizeMatch) product.availableSizes = [sizeMatch[1]];
+    }
+    let number = Math.max(1, Number(legacyMatch[1]) || 1);
+    let candidate = `${productReferenceBase(product)}-${formatProductReference(number)}`;
+    while (reserved.has(candidate.toUpperCase())) {
+      sequence += 1;
+      number = sequence;
+      candidate = `${productReferenceBase(product)}-${formatProductReference(number)}`;
+    }
+    product.reference = candidate;
+    reserved.add(candidate.toUpperCase());
+    sequence = Math.max(sequence, number);
+  });
+  localStorage.setItem("etokiana-product-reference-sequence", String(sequence));
+  localStorage.setItem("etokiana-products", JSON.stringify(products));
+}
+migrateLegacyProductReferences();
+// const identityButton = document.createElement("button");
+// identityButton.className = "identity-button";
+// identityButton.type = "button";
+// identityButton.title = "Voir l’identité de l’utilisateur";
+// identityButton.innerHTML =
+//   '<span class="identity-avatar" aria-hidden="true"><span id="identity-initials">U</span><span class="identity-role-icon" id="identity-role-icon"></span></span>';
+// document.querySelector("#profile-button").after(identityButton);
 const identityModal = document.createElement("section");
 identityModal.className = "modal";
 identityModal.id = "identity-modal";
@@ -823,18 +1116,6 @@ identityModal
     updateProfileButton();
     showToast("Vous êtes déconnecté.");
   });
-identityButton.addEventListener("click", () => {
-  if (!currentUser) return openModal(loginModal);
-  const roleLabels = {
-    client: "Client",
-    seller: "Vendeur",
-    owner: "E-Tokiana (admin)",
-    admin: "E-Tokiana (admin)",
-  };
-  identityModal.querySelector(".identity-details").innerHTML =
-    `<div class="identity-row"><span>Nom utilisateur</span><strong>${currentUser.role === "owner" || currentUser.role === "admin" ? adminIdentity.name : currentUser.name || "Non renseigné"}</strong></div><div class="identity-row"><span>E-mail utilisateur</span><strong>${currentUser.email || "Non renseigné"}</strong></div><div class="identity-row"><span>Rôle utilisateur</span><strong>${roleLabels[currentUser.role] || "Compte"}</strong></div>${currentUser.role === "client" ? `<div class="identity-row"><span>Adresse client</span><strong>${currentUser.address || "Non renseignée"}</strong></div>` : ""}${currentUser.role === "seller" ? `<div class="identity-row"><span>Boutique vendeur</span><strong>${currentUser.name || "Ma boutique"}</strong></div>` : ""}${["owner", "admin"].includes(currentUser.role) ? '<div class="identity-row"><span>Portefeuille Admin</span><strong>Commissions de la plateforme · 10 %</strong></div>' : ""}`;
-  openModal(identityModal);
-});
 const notificationButton = document.createElement("button");
 notificationButton.className = "notification-button";
 notificationButton.type = "button";
@@ -1179,6 +1460,14 @@ function filteredProducts() {
   return filtered.sort((a, b) => a.id - b.id);
 }
 
+function productVariantSummary(product) {
+  const colors = productOptionList(product.availableColors || product.colors);
+  const sizes = productOptionList(product.availableSizes || product.sizes);
+  const parts = [];
+  if (colors.length) parts.push(`Couleurs : ${colors.join(", ")}`);
+  if (sizes.length) parts.push(`Tailles : ${sizes.join(", ")}`);
+  return parts.join(" · ");
+}
 function renderProducts() {
   const visibleProducts = filteredProducts();
   emptyState.hidden = visibleProducts.length > 0;
@@ -1195,7 +1484,9 @@ function renderProducts() {
           <span class="product-image-category">${product.category}</span>
           <span class="product-image-subcategory">${(product.categoryPath || [product.category]).slice(1).join(" · ") || "Sélection générale"}</span>
           <span class="product-image-detail">${product.material}</span>
+          ${productVariantSummary(product) ? `<span class="product-image-variants">${productVariantSummary(product)}</span>` : ""}
           <h3 class="product-image-name">${product.name}</h3>
+          <span class="product-image-reference">Réf. ${window.getProductReference(product)}</span>
           <p class="product-image-price">${product.discount ? `<del>${productPriceMarkup(product.price)}</del>` : ""}<strong>${productPriceMarkup(effectivePrice(product))}</strong>${product.discount ? `<span class="product-image-discount">-${product.discount}%</span>` : ""}</p>
         </div>
         <div class="product-image-actions">
@@ -1225,14 +1516,16 @@ function renderCart() {
     return;
   }
   cartItems.innerHTML = cart
-    .map(
-      (item) => `
+    .map((item) => {
+      const lineId = item.cartLineId || cartLineKey(item.id, item.selectedColor, item.selectedSize);
+      const variantDetails = [item.selectedColor ? `Couleur : ${item.selectedColor}` : "", item.selectedSize ? `Taille / format : ${item.selectedSize}` : ""].filter(Boolean).join(" · ");
+      return `
     <div class="cart-item">
       <img src="${item.image}" alt="${item.name}" />
-      <div><p class="cart-item-name">${item.name}</p><p class="cart-item-detail">${item.material}</p><div class="quantity-control"><button data-decrease="${item.id}" aria-label="Diminuer la quantité">−</button><span>${item.quantity}</span><button data-increase="${item.id}" aria-label="Augmenter la quantité">＋</button></div></div>
-      <div><button class="remove-item" data-remove="${item.id}" aria-label="Retirer ${item.name}">×</button><p class="cart-item-price">${euro(effectivePrice(item) * item.quantity)}</p></div>
-    </div>`,
-    )
+      <div><p class="cart-item-name">${item.name}</p><p class="cart-item-detail">${item.material || ""}</p>${variantDetails ? `<p class="cart-item-variant-detail">${variantDetails}</p>` : ""}<div class="quantity-control"><button data-line-id="${lineId}" data-decrease="${lineId}" aria-label="Diminuer la quantité">−</button><span>${item.quantity}</span><button data-line-id="${lineId}" data-increase="${lineId}" aria-label="Augmenter la quantité">＋</button></div></div>
+      <div><button class="remove-item" data-line-id="${lineId}" data-remove="${lineId}" aria-label="Retirer ${item.name}">×</button><p class="cart-item-price">${euro(effectivePrice(item) * item.quantity)}</p></div>
+    </div>`;
+    })
     .join("");
   cartTotal.textContent = euro(
     cart.reduce(
@@ -1273,10 +1566,17 @@ function renderShippingSummary() {
 function saveFavorites() {
   localStorage.setItem("etokiana-favorites", JSON.stringify(favorites));
 }
-function addToCart(product, quantity = 1) {
-  const existing = cart.find((item) => item.id === product.id);
+function cartLineKey(productId, color = "", size = "") {
+  return `${String(productId)}::${encodeURIComponent(String(color || ""))}::${encodeURIComponent(String(size || ""))}`;
+}
+function addToCart(product, quantity = 1, options = {}) {
+  if (!product) return;
+  const selectedColor = String(options.color || "");
+  const selectedSize = String(options.size || "");
+  const cartLineId = cartLineKey(product.id, selectedColor, selectedSize);
+  const existing = cart.find((item) => (item.cartLineId || cartLineKey(item.id, item.selectedColor, item.selectedSize)) === cartLineId);
   if (existing) existing.quantity += quantity;
-  else cart.push({ ...product, quantity });
+  else cart.push({ ...product, quantity, selectedColor, selectedSize, cartLineId });
   saveCart();
 }
 function showToast(message) {
@@ -1294,17 +1594,45 @@ function closeCart() {
   drawerBackdrop.classList.remove("visible");
   cartDrawer.setAttribute("aria-hidden", "true");
 }
+// function openModal(modal) {
+//   document.querySelectorAll(".modal.open").forEach((openedModal) => {
+//     if (openedModal !== modal) closeModal(openedModal);
+//   });
+//   modal.classList.add("open");
+//   modal.setAttribute("aria-hidden", "false");
+// }
+// function closeModal(modal) {
+//   modal.classList.remove("open");
+//   modal.setAttribute("aria-hidden", "true");
+// }
+
 function openModal(modal) {
   document.querySelectorAll(".modal.open").forEach((openedModal) => {
-    if (openedModal !== modal) closeModal(openedModal);
+    if (openedModal !== modal) {
+      closeModal(openedModal);
+    }
   });
+
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
+
+  // Le site se réorganise lorsque les notifications s'ouvrent.
+  document.body.classList.toggle(
+    "notifications-open",
+    modal.id === "notification-modal",
+  );
 }
+
 function closeModal(modal) {
   modal.classList.remove("open");
   modal.setAttribute("aria-hidden", "true");
+
+  // Le site reprend sa largeur normale à la fermeture.
+  if (modal.id === "notification-modal") {
+    document.body.classList.remove("notifications-open");
+  }
 }
+
 function updatePaymentTotal() {
   renderShippingSummary();
 }
@@ -1418,6 +1746,15 @@ function renderAdminDashboard() {
 
 function openUserSpace() {
   if (!currentUser) return openModal(loginModal);
+
+  // L'espace utilisateur premium du HTML est désormais le point d'entrée unique.
+  // app.js conserve le routage et transmet la main au rendu premium selon le rôle.
+  if (typeof window.renderPremiumUserSpace === "function") {
+    window.renderPremiumUserSpace();
+    return;
+  }
+
+  // Fallback pour les anciennes pages qui ne possèdent pas encore l'espace premium.
   if (["admin", "owner", "seller"].includes(currentUser.role)) {
     const isSeller = currentUser.role === "seller";
     document.querySelector("#admin-title").textContent = isSeller
@@ -1441,49 +1778,53 @@ function openUserSpace() {
 }
 function updateProfileButton() {
   const profileButton = document.querySelector("#profile-button");
-  const label = !currentUser
+  const profileLabel = document.querySelector("#profile-label");
+  const profileRole = document.querySelector("#profile-role");
+  const profileAvatarIcon = profileButton?.querySelector(".profile-avatar i");
+  if (!profileButton) return;
+
+  const role = String(currentUser?.role || "client").toLowerCase();
+  const isOwner = role === "owner" || role === "admin";
+  const displayName = !currentUser
     ? "Se connecter"
-    : currentUser.role === "seller"
-      ? "Ma boutique"
-      : currentUser.role === "owner" || currentUser.role === "admin"
-        ? "E-Tokiana (admin)"
-        : "Mon compte";
-  profileButton.hidden = Boolean(currentUser);
-  identityButton.hidden = !currentUser;
-  chatButton.hidden = !currentUser;
+    : isOwner
+      ? (adminIdentity?.name || currentUser.name || "E-tokiana")
+      : (currentUser.name || currentUser.fullName || currentUser.displayName || currentUser.username || "Utilisateur");
+
+  const roleDetails = !currentUser
+    ? { label: "", icon: "bi-person-fill", className: "" }
+    : isOwner
+      ? { label: "ADMIN", icon: "bi-shield-lock-fill", className: "role-admin" }
+      : role === "seller"
+        ? { label: "VENDEUR", icon: "bi-shop", className: "role-vendeur" }
+        : role === "redac" || role === "editor"
+          ? { label: "RÉDAC", icon: "bi-pencil-square", className: "role-redac" }
+          : role === "prestataire" || role === "provider"
+            ? { label: "PRESTATAIRE", icon: "bi-briefcase-fill", className: "role-prestataire" }
+            : { label: "CLIENT", icon: "bi-person-fill", className: "role-client" };
+
+  profileButton.hidden = false;
+  profileButton.classList.toggle("is-logged-in", Boolean(currentUser));
+  profileButton.classList.toggle("is-logged-out", !currentUser);
+  ["role-admin", "role-client", "role-vendeur", "role-redac", "role-prestataire"].forEach((name) => profileButton.classList.remove(name));
+  if (roleDetails.className) profileButton.classList.add(roleDetails.className);
+
+  if (profileLabel) profileLabel.textContent = displayName;
+  if (profileRole) {
+    profileRole.textContent = roleDetails.label;
+    profileRole.hidden = !currentUser;
+  }
+  if (profileAvatarIcon) profileAvatarIcon.className = `bi ${roleDetails.icon}`;
+
   profileButton.setAttribute(
     "aria-label",
-    !currentUser ? "Se connecter à mon compte" : `Ouvrir ${label}`,
+    !currentUser ? "Se connecter à mon compte" : `Ouvrir l’espace utilisateur de ${displayName}`,
   );
-  document.querySelector("#profile-label").textContent = label;
-  if (currentUser) {
-    const isOwner =
-      currentUser.role === "owner" || currentUser.role === "admin";
-    const displayName = isOwner
-      ? adminIdentity.name
-      : currentUser.name || "Utilisateur";
-    const nameParts = displayName.trim().split(/\s+/).filter(Boolean);
-    const initials = isOwner
-      ? "ET"
-      : nameParts.length > 1
-        ? `${nameParts[0][0]}${nameParts.at(-1)[0]}`
-        : (nameParts[0] || "U").slice(0, 2);
-    const roleDetails = isOwner
-      ? { label: "Propriétaire", icon: "bi-shield-check", className: "owner" }
-      : currentUser.role === "seller"
-        ? { label: "Vendeur", icon: "bi-shop", className: "seller" }
-        : { label: "Client", icon: "bi-person-fill", className: "client" };
-    const initialsElement = document.querySelector("#identity-initials");
-    initialsElement.textContent = initials.toLocaleUpperCase("fr-FR");
-    const roleIcon = document.querySelector("#identity-role-icon");
-    roleIcon.className = `identity-role-icon ${roleDetails.className}`;
-    roleIcon.innerHTML = `<i class="bi ${roleDetails.icon}" aria-hidden="true"></i>`;
-    identityButton.setAttribute(
-      "aria-label",
-      `${displayName} · ${roleDetails.label}`,
-    );
-    identityButton.title = `${displayName} · ${roleDetails.label}`;
-  }
+  profileButton.title = !currentUser
+    ? "Se connecter"
+    : `Espace utilisateur · ${displayName}${roleDetails.label ? ` · ${roleDetails.label}` : ""}`;
+
+  chatButton.hidden = !currentUser;
   renderNotifications();
   updateChatBadge();
   if (currentUser?.role === "client") {
@@ -1499,8 +1840,9 @@ function updateProfileButton() {
     document.querySelector("#admin-title").textContent =
       `Boutique de ${currentUser.name || "vendeur"}`;
   if (currentUser?.role === "owner" || currentUser?.role === "admin")
-    document.querySelector("#admin-title").textContent = "E-Tokiana (admin)";
+    document.querySelector("#admin-title").textContent = "E-Tokiana · Administration";
 }
+
 function renderAccountData() {
   const userOrders = orders.filter(
     (order) => order.buyerId === currentUser?.email,
@@ -1680,16 +2022,307 @@ function addOwnerOrderActions() {
   panel.append(section);
 }
 
+
+// ===== Fiche produit premium =====
+const DEFAULT_PRODUCT_DESCRIPTION =
+  "Une pièce choisie pour son usage, sa qualité et sa capacité à trouver naturellement sa place dans votre quotidien.";
+function isEditorUser(user = currentUser) {
+  const role = String(user?.role || "").toLowerCase();
+  return ["redac", "rédac", "editor", "writer", "journalist", "content"].some(
+    (key) => role.includes(key),
+  );
+}
+function productStock(product) {
+  if (Number.isFinite(Number(product?.stock)) && product.stock !== "" && product.stock != null)
+    return Number(product.stock);
+  const match = String(product?.material || "").match(/(\d+)\s*unités?/i);
+  return match ? Number(match[1]) : null;
+}
+function renderProductStock(product) {
+  const stock = productStock(product);
+  const label = document.querySelector("#product-modal-stock");
+  const badge = document.querySelector("#product-modal-badge");
+  const addButton = document.querySelector("#product-modal-add");
+  const qty = document.querySelector("#product-modal-quantity");
+  const minus = document.querySelector("#pd-qty-minus");
+  const plus = document.querySelector("#pd-qty-plus");
+  let state = "ok";
+  let text = "En stock";
+  const inactive = product.active === false || product.status === "inactive";
+  if (stock === 0) {
+    state = "out";
+    text = "Épuisé";
+  } else if (inactive) {
+    state = "out";
+    text = "Produit inactif";
+  } else if (stock !== null && stock <= 5) {
+    state = "low";
+    text = `Plus que ${stock} en stock`;
+  }
+  label.className = `pd-stock pd-stock-${state}`;
+  const stockIcon = state === "out"
+    ? `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.4"/><path d="m7 7 6 6m0-6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`
+    : state === "low"
+      ? `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M10 2.8 18 17H2z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M10 7v4.5m0 2.2v.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`
+      : `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.4"/><path d="m6.5 10 2.2 2.2 4.7-4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  label.innerHTML = `${stockIcon}<span>${text}</span>`;
+  badge.hidden = false;
+  badge.textContent = state === "out" ? "Indisponible" : state === "low" ? "Stock limité" : "Disponible";
+  badge.className = `pd-badge pd-badge-${state}`;
+  const priceAvailability = document.querySelector("#product-modal-price-availability");
+  if (priceAvailability) {
+    priceAvailability.classList.toggle("is-out", state === "out");
+    priceAvailability.classList.toggle("is-low", state === "low");
+    const priceAvailabilityLabel = priceAvailability.querySelector("span");
+    if (priceAvailabilityLabel) priceAvailabilityLabel.textContent = state === "out" ? "Indisponible" : "Disponible";
+  }
+  const out = state === "out";
+  addButton.disabled = out;
+  qty.disabled = out;
+  minus.disabled = out;
+  plus.disabled = out;
+  addButton.querySelector("span").textContent = out
+    ? "Produit indisponible"
+    : "Ajouter au panier";
+  qty.max = stock !== null && stock > 0 ? String(stock) : "99";
+  updateProductVariantPurchaseState();
+}
+function renderProductDescription(product) {
+  const field = document.querySelector("#product-modal-description");
+  const saveButton = document.querySelector("#product-modal-save-desc");
+  const lock = document.querySelector("#pd-desc-lock");
+  const hint = document.querySelector("#pd-desc-hint");
+  const canEdit = isEditorUser();
+  field.value = product.description || DEFAULT_PRODUCT_DESCRIPTION;
+  field.disabled = !canEdit;
+  field.readOnly = !canEdit;
+  field.classList.toggle("is-locked", !canEdit);
+  lock.hidden = canEdit;
+  saveButton.hidden = !canEdit;
+  hint.textContent = canEdit
+    ? "Vous pouvez modifier cette description en tant que rédacteur."
+    : "Seuls les rédacteurs peuvent modifier la description.";
+}
+function productMetaItems(product) {
+  const stock = productStock(product);
+  const state =
+    stock === 0
+      ? "Épuisé"
+      : product.active === false || product.status === "inactive"
+        ? "Inactif"
+        : stock !== null && stock <= 3
+          ? "Stock faible"
+          : "Disponible";
+  const dateLabel = (value) => {
+    if (!value) return "Non renseignée";
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? "Non renseignée" : d.toLocaleDateString("fr-FR");
+  };
+  const created =
+    product.createdAt || product.created_at || product.dateAdded || product.dateIntegration || product.createdDate;
+  const outDate =
+    product.ruptureDate || product.stockOutDate || product.outOfStockDate || product.dateRupture;
+  const category = (Array.isArray(product.categoryPath) && product.categoryPath.length)
+    ? product.categoryPath.join(" / ")
+    : (product.category || "Non renseignée");
+  const discount = Number(product.discount) || 0;
+  return [
+    ["Catégorie", category],
+    ["Matière / variante", product.material || "Non renseignée"],
+    ["Couleurs disponibles", productOptionList(product.availableColors || product.colors).join(", ") || "Non renseignées"],
+    ["Tailles / formats", productOptionList(product.availableSizes || product.sizes).join(", ") || "Non renseignés / non applicable"],
+    ["Prix catalogue", euro(product.price)],
+    ["Remise", discount > 0 ? `${discount}%` : "Aucune"],
+    ["Référence produit", window.getProductReference(product)],
+    ["Vendeur", sellerLabel(product)],
+    ["Disponibilité", stock === 0 || product.active === false || product.status === "inactive" ? "Indisponible" : "Disponible"],
+    ["Quantité en stock", stock === null ? "Non renseignée" : `${stock} unité(s)`],
+    ["État du produit", state],
+    ["Date d’intégration", dateLabel(created)],
+    ["Date de rupture de stock", stock === 0 ? dateLabel(outDate) : (outDate ? dateLabel(outDate) : "Aucune rupture signalée")],
+  ];
+}
+let selectedProductOptions = { color: "", size: "" };
+function renderProductDetailVariantChoice(kind) {
+  if (!selectedProduct) return;
+  const isColor = kind === "color";
+  const available = productOptionList(isColor
+    ? (selectedProduct.availableColors || selectedProduct.colors)
+    : (selectedProduct.availableSizes || selectedProduct.sizes));
+  const row = document.querySelector(isColor ? "#product-modal-colors-row" : "#product-modal-sizes-row");
+  const list = document.querySelector(isColor ? "#product-modal-colors-choices" : "#product-modal-sizes-choices");
+  const selectedLabel = document.querySelector(isColor ? "#product-modal-selected-color" : "#product-modal-selected-size");
+  if (!row || !list || !selectedLabel) return;
+  row.hidden = available.length === 0;
+  list.replaceChildren();
+  const selectedValue = isColor ? selectedProductOptions.color : selectedProductOptions.size;
+  selectedLabel.textContent = selectedValue || (available.length > 1 ? "Choix requis" : "Option indisponible");
+  available.forEach((value) => {
+    list.append(createVariantChoiceButton({
+      kind: isColor ? "color" : "size",
+      value,
+      selected: value === selectedValue,
+      detail: true,
+      onToggle: (next) => {
+        if (isColor) selectedProductOptions.color = next;
+        else selectedProductOptions.size = next;
+        renderProductDetailVariantChoice(kind);
+        updateProductVariantPurchaseState();
+      },
+    }));
+  });
+}
+function updateProductVariantPurchaseState() {
+  const button = document.querySelector("#product-modal-add");
+  if (!button || !selectedProduct) return;
+  const availableColors = productOptionList(selectedProduct.availableColors || selectedProduct.colors);
+  const availableSizes = productOptionList(selectedProduct.availableSizes || selectedProduct.sizes);
+  const missingColor = availableColors.length > 1 && !selectedProductOptions.color;
+  const missingSize = availableSizes.length > 1 && !selectedProductOptions.size;
+  const unavailable = productStock(selectedProduct) === 0 || selectedProduct.active === false || selectedProduct.status === "inactive";
+  button.disabled = unavailable || missingColor || missingSize;
+  const label = button.querySelector("span");
+  if (label) label.textContent = unavailable
+    ? "Produit indisponible"
+    : missingColor && missingSize
+      ? "Choisir couleur et taille"
+      : missingColor
+        ? "Choisir une couleur"
+        : missingSize
+          ? "Choisir une taille"
+          : "Ajouter au panier";
+}
+
+function openProductDetail(product, opts = {}) {
+  if (!product) return;
+  selectedProduct = product;
+  const staff = Boolean(opts.staff);
+  productModal.classList.toggle("pd-staff", staff);
+  const productCategoryText = `${product.category || ""} ${(product.categoryPath || []).join(" ")}`.toLowerCase();
+  const productDescriptionText = `${product.name || ""} ${product.material || ""}`.toLowerCase();
+  const isBeautyTextureProduct = /(beauté|soin|cosmé|beauty)/i.test(productCategoryText)
+    && /(ml|crème|creme|huile|lotion|sérum|serum|karité|karite|savon)/i.test(productDescriptionText);
+  productModal.classList.toggle("pd-with-texture", staff && isBeautyTextureProduct);
+  const metaBox = document.querySelector("#product-modal-meta");
+  const metaList = document.querySelector("#product-modal-meta-list");
+  metaList.replaceChildren();
+  metaBox.hidden = !staff;
+  if (staff) {
+    productMetaItems(product).forEach(([label, value]) => {
+      // Chaque information est regroupée pour former une carte lisible et homogène.
+      const item = document.createElement("div");
+      item.className = "pd-meta-item";
+      const dt = document.createElement("dt");
+      dt.textContent = label;
+      const dd = document.createElement("dd");
+      dd.textContent = String(value);
+      item.append(dt, dd);
+      metaList.append(item);
+    });
+  }
+  document.querySelector("#product-modal-image").src = product.image;
+  document.querySelector("#product-modal-image").alt = product.name;
+  document.querySelector("#product-modal-category").textContent =
+    `${(product.categoryPath || [product.category]).join(" / ")} / E-tokiana`;
+  document.querySelector("#product-modal-title").textContent = product.name;
+  document.querySelector("#product-modal-reference").textContent = `Référence ${window.getProductReference(product)}`;
+  document.querySelector("#product-modal-material").textContent =
+    product.material;
+  const variantBox = document.querySelector("#product-modal-variants");
+  const availableColors = productOptionList(product.availableColors || product.colors);
+  const availableSizes = productOptionList(product.availableSizes || product.sizes);
+  selectedProductOptions = {
+    color: availableColors.length === 1 ? availableColors[0] : "",
+    size: availableSizes.length === 1 ? availableSizes[0] : "",
+  };
+  variantBox.hidden = availableColors.length === 0 && availableSizes.length === 0;
+  renderProductDetailVariantChoice("color");
+  renderProductDetailVariantChoice("size");
+  const variantHelp = document.querySelector("#product-modal-variant-help");
+  if (variantHelp) variantHelp.hidden = variantBox.hidden;
+  document.querySelector("#product-modal-price").innerHTML = product.discount
+    ? `<del>${euro(product.price)}</del> <strong>${euro(effectivePrice(product))}</strong> <span class="discount-inline">-${product.discount}%</span>`
+    : euro(product.price);
+  document.querySelector("#product-modal-quantity").value = "1";
+  renderProductStock(product);
+  const availability = document.querySelector("#product-modal-availability");
+  if (availability) {
+    const stock = productStock(product);
+    const inactive = product.active === false || product.status === "inactive";
+    const state = stock === 0 || inactive ? "out" : stock !== null && stock <= 5 ? "low" : "ok";
+    availability.textContent = state === "out" ? "Indisponible" : "Disponible";
+    availability.classList.toggle("is-out", state === "out");
+    availability.classList.toggle("is-low", state === "low");
+  }
+  renderProductDescription(product);
+  openModal(productModal);
+  productModal.querySelector(".pd-sheet").scrollTop = 0;
+}
+(function bindProductDetail() {
+  const qty = document.querySelector("#product-modal-quantity");
+  const clamp = () => {
+    const max = Number(qty.max) || 99;
+    qty.value = String(Math.min(max, Math.max(1, Number.parseInt(qty.value, 10) || 1)));
+  };
+  document.querySelector("#pd-qty-minus").addEventListener("click", () => {
+    qty.value = String((Number.parseInt(qty.value, 10) || 1) - 1);
+    clamp();
+  });
+  document.querySelector("#pd-qty-plus").addEventListener("click", () => {
+    qty.value = String((Number.parseInt(qty.value, 10) || 1) + 1);
+    clamp();
+  });
+  qty.addEventListener("change", clamp);
+  document
+    .querySelector("#product-modal-save-desc")
+    .addEventListener("click", () => {
+      if (!isEditorUser() || !selectedProduct) return;
+      const value = document
+        .querySelector("#product-modal-description")
+        .value.trim();
+      selectedProduct.description = value || DEFAULT_PRODUCT_DESCRIPTION;
+      localStorage.setItem("etokiana-products", JSON.stringify(products));
+      showToast("Description enregistrée");
+    });
+})();
+
+
+// Ouverture de la fiche produit : un seul gestionnaire, quel que soit l'endroit du site
+document.addEventListener(
+  "click",
+  (event) => {
+    const detailsButton = event.target.closest("[data-details]");
+    if (!detailsButton) return;
+    const product = products.find(
+      (item) => String(item.id) === String(detailsButton.dataset.details),
+    );
+    if (!product) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const role = String(currentUser?.role || "client").toLowerCase();
+    const inUserSpace = Boolean(detailsButton.closest("#user-space-modal"));
+    openProductDetail(product, { staff: inUserSpace && role !== "client" });
+  },
+  true,
+);
+
 productGrid.addEventListener("click", (event) => {
   const addButton = event.target.closest("[data-add]");
   const favoriteButton = event.target.closest("[data-favorite]");
   const detailsButton = event.target.closest("[data-details]");
   if (addButton) {
     const product = products.find(
-      (item) => item.id === Number(addButton.dataset.add),
+      (item) => String(item.id) === String(addButton.dataset.add),
     );
-    addToCart(product);
-    showToast(`${product.name} a rejoint votre panier`);
+    if (!product) return;
+    const hasOptions = productOptionList(product.availableColors || product.colors).length > 0
+      || productOptionList(product.availableSizes || product.sizes).length > 0;
+    if (hasOptions) {
+      openProductDetail(product);
+    } else {
+      addToCart(product);
+      showToast(`${product.name} a rejoint votre panier`);
+    }
   }
   if (favoriteButton) {
     const productId = Number(favoriteButton.dataset.favorite);
@@ -1705,35 +2338,16 @@ productGrid.addEventListener("click", (event) => {
         : "Retiré de vos favoris",
     );
   }
-  if (detailsButton) {
-    selectedProduct = products.find(
-      (item) => item.id === Number(detailsButton.dataset.details),
-    );
-    document.querySelector("#product-modal-image").src = selectedProduct.image;
-    document.querySelector("#product-modal-image").alt = selectedProduct.name;
-    document.querySelector("#product-modal-category").textContent =
-      `${(selectedProduct.categoryPath || [selectedProduct.category]).join(" / ")} / E-tokiana`;
-    document.querySelector("#product-modal-title").textContent =
-      selectedProduct.name;
-    document.querySelector("#product-modal-material").textContent =
-      selectedProduct.material;
-    document.querySelector("#product-modal-price").innerHTML =
-      selectedProduct.discount
-        ? `<del>${euro(selectedProduct.price)}</del> <strong>${euro(effectivePrice(selectedProduct))}</strong> <span class="discount-inline">-${selectedProduct.discount}%</span>`
-        : euro(selectedProduct.price);
-    document.querySelector("#product-modal-quantity").value = "1";
-    openModal(productModal);
-  }
 });
 cartItems.addEventListener("click", (event) => {
-  const id = Number(Object.values(event.target.dataset)[0]);
-  const item = cart.find((product) => product.id === id);
+  const action = event.target.closest("[data-increase], [data-decrease], [data-remove]");
+  if (!action) return;
+  const key = action.dataset.lineId || action.dataset.increase || action.dataset.decrease || action.dataset.remove;
+  const item = cart.find((product) => (product.cartLineId || cartLineKey(product.id, product.selectedColor, product.selectedSize)) === key);
   if (!item) return;
-  if (event.target.dataset.increase) item.quantity += 1;
-  if (event.target.dataset.decrease)
-    item.quantity = Math.max(1, item.quantity - 1);
-  if (event.target.dataset.remove)
-    cart = cart.filter((product) => product.id !== id);
+  if (action.dataset.increase) item.quantity += 1;
+  if (action.dataset.decrease) item.quantity = Math.max(1, item.quantity - 1);
+  if (action.dataset.remove) cart = cart.filter((product) => (product.cartLineId || cartLineKey(product.id, product.selectedColor, product.selectedSize)) !== key);
   saveCart();
 });
 document
@@ -1912,29 +2526,6 @@ document.querySelectorAll(".account-tab").forEach((tab) =>
   }),
 );
 document
-  .querySelector('[data-view="saved"]')
-  .addEventListener("click", (event) => {
-    const detailsButton = event.target.closest("[data-details]");
-    if (!detailsButton) return;
-    selectedProduct = products.find(
-      (item) => item.id === Number(detailsButton.dataset.details),
-    );
-    if (!selectedProduct) return;
-    document.querySelector("#product-modal-image").src = selectedProduct.image;
-    document.querySelector("#product-modal-image").alt = selectedProduct.name;
-    document.querySelector("#product-modal-category").textContent =
-      `${(selectedProduct.categoryPath || [selectedProduct.category]).join(" / ")} / E-tokiana`;
-    document.querySelector("#product-modal-title").textContent =
-      selectedProduct.name;
-    document.querySelector("#product-modal-material").textContent =
-      selectedProduct.material;
-    document.querySelector("#product-modal-price").innerHTML =
-      selectedProduct.discount
-        ? `<del>${euro(selectedProduct.price)}</del> <strong>${euro(effectivePrice(selectedProduct))}</strong> <span class="discount-inline">-${selectedProduct.discount}%</span>`
-        : euro(selectedProduct.price);
-    openModal(productModal);
-  });
-document
   .querySelector('[data-view="overview"]')
   .addEventListener("click", (event) => {
     const action = event.target.closest(".account-action");
@@ -1983,6 +2574,7 @@ document.querySelector(".admin-content").addEventListener("click", (event) => {
   if (status[order.status]) {
     order.status = status[order.status];
     localStorage.setItem("etokiana-orders", JSON.stringify(orders));
+    if (typeof window.renderPremiumUserSpace === "function") window.renderPremiumUserSpace();
     addNotification(
       order.buyerId,
       `Votre commande #${order.id} est maintenant : ${order.status}.`,
@@ -2158,6 +2750,7 @@ document.querySelector("#payment-form").addEventListener("submit", (event) => {
   };
   orders.push(order);
   localStorage.setItem("etokiana-orders", JSON.stringify(orders));
+  if (typeof window.renderPremiumUserSpace === "function") window.renderPremiumUserSpace();
   addNotification(
     order.buyerId,
     `Votre commande #${order.id} a été enregistrée avec ${delivery ? `${euro(delivery)} de livraison` : "la livraison offerte"}.`,
@@ -2189,12 +2782,21 @@ document.querySelector("#payment-form").addEventListener("submit", (event) => {
   showToast(`Commande confirmée. Total : ${euro(total)}`);
 });
 document.querySelector("#product-modal-add").addEventListener("click", () => {
-  const quantity = Number(
-    document.querySelector("#product-modal-quantity").value,
+  if (!selectedProduct || productStock(selectedProduct) === 0) return;
+  const availableColors = productOptionList(selectedProduct.availableColors || selectedProduct.colors);
+  const availableSizes = productOptionList(selectedProduct.availableSizes || selectedProduct.sizes);
+  if ((availableColors.length > 1 && !selectedProductOptions.color) || (availableSizes.length > 1 && !selectedProductOptions.size)) {
+    showToast("Choisissez les options du produit avant de continuer.");
+    return;
+  }
+  const quantity = Math.max(
+    1,
+    Number.parseInt(document.querySelector("#product-modal-quantity").value, 10) || 1,
   );
-  addToCart(selectedProduct, quantity);
+  addToCart(selectedProduct, quantity, selectedProductOptions);
   closeModal(productModal);
-  showToast(`${selectedProduct.name} ajouté au panier`);
+  const choiceSummary = [selectedProductOptions.color, selectedProductOptions.size].filter(Boolean).join(" · ");
+  showToast(`${selectedProduct.name}${choiceSummary ? ` (${choiceSummary})` : ""} ajouté au panier`);
 });
 document.querySelector("#login-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -2250,7 +2852,7 @@ document.querySelector("#login-form").addEventListener("submit", (event) => {
   event.target.reset();
   closeModal(loginModal);
   updateProfileButton();
-  openUserSpace();
+  showToast("Vous êtes connecté avec succès !");
 });
 document.querySelector("#signup-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -2281,7 +2883,7 @@ document.querySelector("#signup-form").addEventListener("submit", (event) => {
   event.target.reset();
   closeModal(signupModal);
   updateProfileButton();
-  openUserSpace();
+  showToast("Compte créé avec succès !");
   showToast(
     user.role === "seller"
       ? "Votre boutique vendeur a été créée."
@@ -2304,16 +2906,7 @@ document
       openModal(document.querySelector(`#${button.dataset.openModal}`)),
     ),
   );
-const discountField =
-  document.querySelector("#new-product-discount") ||
-  (() => {
-    const label = document.createElement("label");
-    label.textContent = "Remise (%)";
-    label.innerHTML +=
-      '<input id="new-product-discount" type="number" min="0" max="90" step="1" placeholder="5" />';
-    document.querySelector("#new-product-price").closest("label").after(label);
-    return label.querySelector("input");
-  })();
+const discountField = document.querySelector("#new-product-discount");
 const roleField =
   document.querySelector("#signup-role") ||
   (() => {
@@ -2324,39 +2917,229 @@ const roleField =
     document.querySelector("#signup-email").closest("label").before(label);
     return label.querySelector("select");
   })();
-document.querySelector("#product-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const name = document.querySelector("#new-product-name").value.trim();
-  const categoryPath = JSON.parse(
-    document.querySelector("#new-product-category").value,
-  );
-  const category = categoryPath[0];
-  const price = Number(document.querySelector("#new-product-price").value);
-  const stock = Number(document.querySelector("#new-product-stock").value);
-  const image =
-    document.querySelector("#new-product-image").value ||
-    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=85";
-  const discount = Number(
-    document.querySelector("#new-product-discount")?.value || 0,
-  );
-  const newProduct = {
-    id: Date.now(),
-    name,
-    category,
-    categoryPath,
-    material: `Nouveau produit · ${stock} unités`,
-    price,
-    discount,
-    image,
-    sellerId: currentUser?.role === "seller" ? currentUser.id : "owner",
-  };
-  products.push(newProduct);
+function canManageProduct(product, user = currentUser) {
+  if (!product || !user) return false;
+  const role = String(user.role || "").toLowerCase();
+  if (["owner", "admin", "administrator", "superadmin", "super-admin"].includes(role)) return true;
+  return role === "seller" && String(product.sellerId) === String(user.id);
+}
+function refreshProductsAndUserSpace() {
   localStorage.setItem("etokiana-products", JSON.stringify(products));
   renderProducts();
-  event.target.reset();
-  closeModal(document.querySelector("#product-form-modal"));
-  showToast(`${name} a été ajouté au catalogue`);
+  if (typeof window.renderPremiumUserSpace === "function") window.renderPremiumUserSpace();
+}
+window.openProductFormForEdit = function (productId) {
+  const product = products.find((item) => String(item.id) === String(productId));
+  if (!canManageProduct(product)) { showToast("Vous n’êtes pas autorisé à modifier ce produit."); return; }
+  document.querySelector("#product-edit-id").value = String(product.id);
+  document.querySelector("#new-product-name").value = product.name || "";
+  document.querySelector("#new-product-category").value = JSON.stringify(product.categoryPath || [product.category]);
+  document.querySelector("#new-product-price").value = String(Math.round((Number(product.price) || 0) * currencyRate));
+  document.querySelector("#new-product-stock").value = String(Number(product.stock) || 0);
+  document.querySelector("#new-product-discount").value = String(Number(product.discount) || 0);
+  document.querySelector("#new-product-image").value = product.image || "";
+  document.querySelector("#new-product-description").value = product.description || "";
+  document.querySelector("#new-product-colors").value = productOptionList(product.availableColors || product.colors).join(", ");
+  document.querySelector("#new-product-sizes").value = productOptionList(product.availableSizes || product.sizes).join(", ");
+  updateProductVariantFieldVisibility();
+  updateProductReferencePreview(product);
+  document.querySelector("#product-form-title").textContent = "Modifier le produit";
+  document.querySelector("#product-form-submit").innerHTML = 'Enregistrer les modifications <i class="bi bi-check2" aria-hidden="true"></i>';
+  openModal(document.querySelector("#product-form-modal"));
+};
+window.deleteManagedProduct = function (productId) {
+  const product = products.find((item) => String(item.id) === String(productId));
+  if (!canManageProduct(product)) { showToast("Vous n’êtes pas autorisé à supprimer ce produit."); return; }
+  if (!window.confirm(`Supprimer « ${product.name} » ? Cette action est définitive.`)) return;
+  products = products.filter((item) => String(item.id) !== String(productId));
+  refreshProductsAndUserSpace();
+  showToast(`Le produit « ${product.name} » a été supprimé.`);
+};
+const productForm = document.querySelector("#product-form");
+const productColorsField = document.querySelector("#new-product-colors");
+const productSizesField = document.querySelector("#new-product-sizes");
+const productColorsFieldWrap = document.querySelector("#new-product-colors-field");
+const productSizesFieldWrap = document.querySelector("#new-product-sizes-field");
+function isVariantRelevantCategory(categoryPath) {
+  const root = referenceAscii((categoryPath || [""])[0] || "");
+  return !/EPICERIE|ALIMENTAIRE|GROCERY|SERVICE|RESERVATION/.test(root);
+}
+function isSizeRelevantCategory(categoryPath) {
+  const pathText = referenceAscii((categoryPath || []).join(" "));
+  return /MODE|FEMME|HOMME|VETEMENT|CHAUSSURE|ROBE|PANTALON|CHEMISE|TSHIRT|JEAN|BASKET|TALON|BOTTINE|SAC|LINGE|TEXTILE|RIDEAU|COUSSIN|CANAPE|TABLE|CHAISE|LIT|INFORMATIQUE|ORDINATEUR|ECRAN|SMARTPHONE|TELEVISEUR|MONTRE|ACCESSOIRE/.test(pathText);
+}
+function renderAdminVariantChoices(kind) {
+  const isColor = kind === "color";
+  const field = isColor ? productColorsField : productSizesField;
+  const container = document.querySelector(isColor ? "#new-product-colors-choices" : "#new-product-sizes-choices");
+  const count = document.querySelector(isColor ? "#new-product-colors-count" : "#new-product-sizes-count");
+  if (!field || !container) return;
+  const selected = productOptionList(field.value);
+  let categoryPath = [];
+  try { categoryPath = JSON.parse(document.querySelector("#new-product-category").value || "[]"); } catch (_) {}
+  const presets = isColor ? productColorPalette : productSizePalette(categoryPath);
+  const options = appendUnknownVariantOptions(presets, selected);
+  container.replaceChildren();
+  options.forEach((option) => {
+    const value = typeof option === "string" ? option : option.value;
+    const active = selected.some((item) => referenceAscii(item) === referenceAscii(value));
+    container.append(createVariantChoiceButton({
+      kind: isColor ? "color" : "size",
+      value,
+      selected: active,
+      onToggle: (next) => {
+        const current = productOptionList(field.value);
+        const exists = current.some((item) => referenceAscii(item) === referenceAscii(next));
+        const updated = exists
+          ? current.filter((item) => referenceAscii(item) !== referenceAscii(next))
+          : [...current, next];
+        field.value = updated.join(", ");
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        renderAdminVariantChoices(kind);
+      },
+    }));
+  });
+  if (count) count.textContent = `${selected.length} ${isColor ? (selected.length > 1 ? "choisies" : "choisie") : (selected.length > 1 ? "choisies" : "choisie")}`;
+}
+function renderAllAdminVariantChoices() {
+  renderAdminVariantChoices("color");
+  renderAdminVariantChoices("size");
+}
+function addCustomVariant(kind) {
+  const isColor = kind === "color";
+  const field = isColor ? productColorsField : productSizesField;
+  const custom = document.querySelector(isColor ? "#new-product-colors-custom" : "#new-product-sizes-custom");
+  const additions = productOptionList(custom?.value || "");
+  if (!additions.length) {
+    custom?.focus();
+    return;
+  }
+  const selected = productOptionList(field.value);
+  additions.forEach((value) => {
+    if (!selected.some((item) => referenceAscii(item) === referenceAscii(value))) selected.push(value);
+  });
+  field.value = selected.join(", ");
+  if (custom) custom.value = "";
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+  renderAdminVariantChoices(kind);
+  custom?.focus();
+}
+function updateProductVariantFieldVisibility() {
+  const selector = document.querySelector("#new-product-category");
+  let path = [];
+  try { path = selector.value ? JSON.parse(selector.value) : []; } catch (_) {}
+  const physical = isVariantRelevantCategory(path);
+  productColorsFieldWrap.hidden = !physical;
+  productSizesFieldWrap.hidden = !physical || !isSizeRelevantCategory(path);
+  productColorsField.setAttribute("aria-hidden", String(!physical));
+  productSizesField.setAttribute("aria-hidden", String(!physical || !isSizeRelevantCategory(path)));
+  renderAllAdminVariantChoices();
+}
+window.refreshProductVariantChoices = function () {
+  updateProductVariantFieldVisibility();
+  updateProductReferencePreview();
+};
+function getFormReferenceProduct() {
+  let categoryPath = [];
+  try { categoryPath = JSON.parse(document.querySelector("#new-product-category").value || "[]"); } catch (_) {}
+  return {
+    name: document.querySelector("#new-product-name").value.trim() || "Nouveau produit",
+    category: categoryPath[0] || "Général",
+    categoryPath: categoryPath.length ? categoryPath : ["Général"],
+    sellerId: currentUser?.role === "seller" ? currentUser.id : "owner",
+    availableColors: productOptionList(productColorsField.value),
+    availableSizes: productSizesFieldWrap.hidden ? [] : productOptionList(productSizesField.value),
+  };
+}
+function updateProductReferencePreview(editingProduct = null) {
+  const value = document.querySelector("#product-reference-preview-value");
+  const label = document.querySelector("#product-reference-preview-label");
+  const help = document.querySelector("#product-reference-preview-help");
+  const box = document.querySelector("#product-reference-preview");
+  if (!value || !label || !help || !box) return;
+  if (editingProduct) {
+    label.textContent = "Référence du produit";
+    value.textContent = window.getProductReference(editingProduct);
+    help.textContent = "Référence conservée pour préserver l’historique du produit.";
+    return;
+  }
+  label.textContent = "Référence automatique";
+  value.textContent = findNextProductReference(getFormReferenceProduct(), false);
+  help.textContent = "Attribuée à la publication et conservée lors des modifications.";
+}
+["#new-product-name", "#new-product-colors", "#new-product-sizes"].forEach((selector) => {
+  document.querySelector(selector)?.addEventListener("input", () => updateProductReferencePreview());
 });
+document.querySelector("#new-product-colors-add")?.addEventListener("click", () => addCustomVariant("color"));
+document.querySelector("#new-product-sizes-add")?.addEventListener("click", () => addCustomVariant("size"));
+["#new-product-colors-custom", "#new-product-sizes-custom"].forEach((selector) => {
+  document.querySelector(selector)?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addCustomVariant(selector.includes("colors") ? "color" : "size");
+    }
+  });
+});
+document.querySelector("#new-product-category")?.addEventListener("change", () => {
+  updateProductVariantFieldVisibility();
+  updateProductReferencePreview();
+});
+productForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = document.querySelector("#new-product-name").value.trim();
+  const categoryPath = JSON.parse(document.querySelector("#new-product-category").value);
+  const category = categoryPath[0];
+  const price = Number(document.querySelector("#new-product-price").value) / currencyRate;
+  const stock = Number(document.querySelector("#new-product-stock").value);
+  const image = document.querySelector("#new-product-image").value.trim() || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=85";
+  const description = document.querySelector("#new-product-description").value.trim();
+  const discount = Math.min(90, Math.max(0, Number(discountField?.value || 0)));
+  const availableColors = productColorsFieldWrap.hidden ? [] : productOptionList(productColorsField.value);
+  const availableSizes = productSizesFieldWrap.hidden ? [] : productOptionList(productSizesField.value);
+  const editingId = document.querySelector("#product-edit-id").value;
+  if (editingId) {
+    const existing = products.find((item) => String(item.id) === String(editingId));
+    if (!canManageProduct(existing)) { showToast("Vous n’êtes pas autorisé à modifier ce produit."); return; }
+    Object.assign(existing, {
+      name, category, categoryPath, stock, price, discount, image, description,
+      availableColors, availableSizes,
+      material: existing.material || `Produit · ${stock} unités`,
+    });
+    // La référence ne bouge pas lorsqu'un attribut éditable change.
+    showToast(`Les informations de « ${name} » ont été mises à jour.`);
+  } else {
+    const newProduct = {
+      id: Date.now(), name, category, categoryPath,
+      material: `Produit · ${stock} unités`, stock,
+      createdAt: new Date().toISOString(), price, discount, image, description,
+      availableColors, availableSizes,
+      sellerId: currentUser?.role === "seller" ? currentUser.id : "owner",
+    };
+    newProduct.reference = nextProductReference(newProduct);
+    products.push(newProduct);
+    showToast(`« ${name} » a été publié dans le catalogue avec la référence ${newProduct.reference}.`);
+  }
+  refreshProductsAndUserSpace();
+  event.target.reset();
+  document.querySelector("#product-edit-id").value = "";
+  document.querySelector("#product-form-title").textContent = "Ajouter un produit";
+  document.querySelector("#product-form-submit").innerHTML = 'Publier le produit <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>';
+  updateProductVariantFieldVisibility();
+  updateProductReferencePreview();
+  closeModal(document.querySelector("#product-form-modal"));
+});
+// Réinitialise le formulaire lorsqu’on ouvre une nouvelle fiche.
+document.querySelectorAll('[data-open-modal="product-form-modal"]').forEach((button) => button.addEventListener("click", () => {
+  document.querySelector("#product-edit-id").value = "";
+  document.querySelector("#product-form").reset();
+  document.querySelector("#product-form-title").textContent = "Ajouter un produit";
+  document.querySelector("#product-form-submit").innerHTML = 'Publier le produit <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>';
+  updateProductVariantFieldVisibility();
+  updateProductReferencePreview();
+}));
+// Laisse l'aperçu prêt si le formulaire est ouvert depuis un autre point d'entrée.
+updateProductVariantFieldVisibility();
+updateProductReferencePreview();
 document.querySelector("#staff-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const name = document.querySelector("#new-staff-name").value.trim();

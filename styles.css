@@ -1,3 +1,7 @@
+/* =====================================================================
+   01. BASE, VARIABLES ET TYPOGRAPHIE
+   ===================================================================== */
+
 * {
   box-sizing: border-box;
 }
@@ -39,6 +43,11 @@ button {
   background: none;
   cursor: pointer;
 }
+
+/* =====================================================================
+   02. BANDEAU D’ANNONCE ET EN-TÊTE / NAVIGATION
+   ===================================================================== */
+
 .announcement {
   align-items: center;
   background: var(--ink);
@@ -330,6 +339,11 @@ button {
   background: none;
   color: var(--orange);
 }
+
+/* =====================================================================
+   03. PANNEAUX COMPTE, SUIVI, NOTIFICATIONS ET MESSAGERIE
+   ===================================================================== */
+
 .identity-panel {
   max-width: 460px;
 }
@@ -469,6 +483,11 @@ button {
   font-family: var(--mono);
   font-size: 9px;
 }
+
+/* =====================================================================
+   04. PANIER ET BARRE DE RECHERCHE
+   ===================================================================== */
+
 .cart-button {
   align-items: center;
   border-bottom: 1px solid var(--ink);
@@ -576,6 +595,11 @@ button {
   box-shadow: 0 0 0 3px rgba(0, 126, 58, 0.16);
   outline: 0;
 }
+
+/* =====================================================================
+   05. SECTION HERO ET BANDEAU DÉFILANT
+   ===================================================================== */
+
 .hero {
   display: grid;
   grid-template-columns: 0.95fr 1.05fr;
@@ -722,6 +746,11 @@ h2 em {
   color: var(--orange);
   font-size: 14px;
 }
+
+/* =====================================================================
+   06. CATALOGUE : FILTRES, CARTES ET PRIX
+   ===================================================================== */
+
 .catalogue-section,
 .journal {
   margin: auto;
@@ -1193,6 +1222,11 @@ h2 {
   padding: 80px 0;
   text-align: center;
 }
+
+/* =====================================================================
+   07. SECTION ÉDITORIALE ET SERVICES
+   ===================================================================== */
+
 .editorial {
   background: var(--ink);
   color: var(--white);
@@ -1284,6 +1318,11 @@ h2 {
   color: var(--orange);
   font-size: 16px;
 }
+
+/* =====================================================================
+   08. JOURNAL / CARROUSEL D’ARTICLES
+   ===================================================================== */
+
 .journal-heading {
   align-items: end;
   gap: 40px;
@@ -1410,6 +1449,11 @@ h2 {
   min-width: 48px;
   text-align: center;
 }
+
+/* =====================================================================
+   09. NEWSLETTER
+   ===================================================================== */
+
 .newsletter {
   align-items: center;
   background: var(--green);
@@ -1515,6 +1559,11 @@ h2 {
   font-size: 10px;
   margin: 10px 0 0;
 }
+
+/* =====================================================================
+   10. SECTION PROPRIÉTAIRE ET COORDONNÉES
+   ===================================================================== */
+
 .owner-section {
   align-items: center;
   border-top: 1px solid var(--line);
@@ -1657,6 +1706,11 @@ h2 {
   flex-basis: auto;
   font-size: 12px;
 }
+
+/* =====================================================================
+   11. PIED DE PAGE
+   ===================================================================== */
+
 .site-footer {
   align-items: center;
   background: var(--paper);
@@ -1677,6 +1731,11 @@ h2 {
 main section[id] {
   scroll-margin-top: 88px;
 }
+
+/* =====================================================================
+   12. TIROIR DU PANIER ET ÉLÉMENTS ASSOCIÉS
+   ===================================================================== */
+
 .cart-drawer {
   background: var(--white);
   bottom: 0;
@@ -2695,6 +2754,11 @@ main section[id] {
 .status-pill.muted {
   color: var(--muted);
 }
+
+/* =====================================================================
+   13. RESPONSIVE INITIAL ET ACCESSIBILITÉ
+   ===================================================================== */
+
 @media (max-width: 800px) {
   .nav-shell {
     padding: 20px;
@@ -2982,5 +3046,2305 @@ main section[id] {
   .cart-button {
     font-size: 11px;
     gap: 4px;
+  }
+}
+
+/* =====================================================================
+   14. AJUSTEMENTS GÉNÉRAUX DE MISE EN PAGE
+   ===================================================================== */
+
+/* =====================================================================
+   E-TOKIANA — largeur fluide du site et notifications synchronisées
+   Ajout correctif : le contenu utilise toute la largeur disponible,
+   avec une marge discrète sur les bords.
+   ===================================================================== */
+:root {
+  --page-gutter: clamp(16px, 2.2vw, 32px);
+  --notification-width: 380px;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: none;
+}
+
+body {
+  box-sizing: border-box;
+  transition: padding-right 0.3s ease;
+}
+
+/* Retirer les limites fixes qui laissaient de grands espaces inutilisés */
+.nav-shell,
+.search-bar-inner,
+.hero,
+.catalogue-section,
+.journal,
+.owner-section {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Marges extérieures souples : confortables sans réduire excessivement le site */
+.nav-shell {
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+}
+
+.hero {
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+}
+
+.catalogue-section,
+.journal {
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+}
+
+.owner-section {
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+}
+
+.search-bar-inner {
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+}
+
+/* Les grilles s'étendent à toute la largeur de leur conteneur */
+.product-grid {
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Notifications à droite : leur largeur est réservée au site.
+   Le JavaScript doit ajouter body.notifications-open à l'ouverture. */
+body.notifications-open {
+  padding-right: var(--notification-width);
+}
+
+#notification-modal.modal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: var(--notification-width);
+  height: 100vh;
+  max-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  background: transparent;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 10000;
+  transition:
+    opacity 0.25s ease,
+    visibility 0.25s ease;
+}
+
+#notification-modal.modal.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#notification-modal .notification-panel {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 100%;
+  max-height: 100vh;
+  margin: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+  border-radius: 0;
+  transform: none;
+}
+
+/* Sur écrans intermédiaires, le panneau prend un peu moins de place */
+@media (max-width: 1100px) {
+  :root {
+    --notification-width: 320px;
+    --page-gutter: 16px;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Sur téléphone, les notifications passent par-dessus le site pour
+   éviter d'écraser le contenu dans une colonne trop étroite. */
+@media (max-width: 700px) {
+  :root {
+    --notification-width: min(380px, 92vw);
+    --page-gutter: 12px;
+  }
+
+  body.notifications-open {
+    padding-right: 0;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =====================================================================
+   15. RESPONSIVE DU CATALOGUE ET DES FILTRES
+   ===================================================================== */
+
+/* Catalogue réellement responsive : le nombre de colonnes dépend de la largeur
+   disponible, et non d'un nombre fixe. Une carte garde une largeur confortable. */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: clamp(10px, 1vw, 16px);
+  align-items: start;
+  width: 100%;
+}
+
+/* Empêche les cartes et leurs images de déborder quand la zone rétrécit */
+.product-grid > *,
+.product-card,
+.product-item {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.product-grid img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* En dessous de 700 px, les notifications se superposent au site :
+   les produits restent fluides et peuvent passer à une seule colonne
+   sur les écrans très étroits. */
+@media (max-width: 700px) {
+  .product-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+    gap: 10px;
+  }
+}
+
+/* Catalogue E-tokiana : filtres à gauche et produits à droite */
+@media (min-width: 901px) {
+  .catalogue-section {
+    display: grid;
+    grid-template-columns: minmax(205px, 245px) minmax(0, 1fr);
+    column-gap: clamp(22px, 2.4vw, 38px);
+    align-items: start;
+  }
+
+  .catalogue-section > .section-heading {
+    grid-column: 1 / -1;
+    margin-bottom: 8px;
+  }
+
+  .catalogue-section > .catalogue-toolbar {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    margin-top: 28px;
+    position: relative;
+    min-width: 0;
+  }
+
+  .catalogue-section .catalogue-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+
+  .catalogue-section .catalogue-field-label {
+    margin-bottom: 8px;
+  }
+
+  .catalogue-section .catalogue-dropdown-toggle {
+    height: auto;
+    min-height: 44px;
+  }
+
+  .catalogue-section > .product-grid {
+    grid-column: 2;
+    grid-row: 2;
+    padding-top: 28px;
+  }
+
+  .catalogue-section > .empty-state {
+    grid-column: 2;
+  }
+}
+
+/* =====================================================================
+   16. VARIANTES, AVIS ET OPTIONS DES PRODUITS
+   ===================================================================== */
+
+/* Éléments de variantes et d'avis à utiliser dans les fiches produit */
+.product-variants,
+.product-colors,
+.product-sizes,
+.product-rating {
+  min-width: 0;
+  margin-top: 9px;
+}
+
+.product-variants-label,
+.product-colors-label,
+.product-sizes-label,
+.product-rating-label {
+  color: var(--muted, #6b6b63);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.product-color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 6px;
+}
+
+.product-color-swatch {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  border: 1px solid rgba(25, 25, 25, 0.22);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+
+.product-size-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.product-size-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 29px;
+  min-height: 25px;
+  padding: 3px 7px;
+  border: 1px solid var(--line, #ddd6cc);
+  border-radius: 3px;
+  color: var(--ink, #222);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.product-rating {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.product-rating-stars {
+  color: #d99b20;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.product-rating-count {
+  color: var(--muted, #6b6b63);
+}
+
+/* Sur tablette et mobile, les filtres repassent au-dessus de la grille */
+@media (max-width: 900px) {
+  .catalogue-section {
+    display: block;
+  }
+
+  .catalogue-section > .catalogue-toolbar {
+    margin-top: 28px;
+  }
+
+  .catalogue-section .catalogue-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+    align-items: end;
+    gap: 14px;
+  }
+
+  .catalogue-section > .product-grid {
+    padding-top: 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .catalogue-section .catalogue-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Barre latérale des filtres : un seul bloc vertical à gauche */
+@media (min-width: 901px) {
+  .catalogue-section > .catalogue-toolbar {
+    grid-column: 1;
+    grid-row: 2 / span 3;
+    align-self: start;
+    width: 100%;
+    padding: 18px;
+    background: #fff;
+    border: 1px solid var(--line, #e7e1d8);
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+
+  .catalogue-section .catalogue-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 22px;
+  }
+
+  .catalogue-section .catalogue-field {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .catalogue-section .catalogue-field-label {
+    display: block;
+    margin-bottom: 9px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+  }
+
+  .catalogue-section .catalogue-dropdown,
+  .catalogue-section .catalogue-dropdown-toggle {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .catalogue-section .catalogue-dropdown-toggle {
+    justify-content: space-between;
+    min-height: 42px;
+    text-align: left;
+  }
+}
+
+/* Badges de décompte pour les options de filtre.
+   Le JavaScript doit ajouter un élément .filter-count ou .catalogue-option-count
+   contenant le nombre réel de produits correspondant à chaque option. */
+.catalogue-dropdown-menu [role="option"],
+.catalogue-dropdown-menu .dropdown-item,
+.catalogue-dropdown-menu .catalogue-filter-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.filter-count,
+.catalogue-option-count,
+.catalogue-dropdown-menu .item-count {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f1eee8;
+  color: #68645d;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.catalogue-dropdown-menu [aria-selected="true"] .filter-count,
+.catalogue-dropdown-menu [aria-selected="true"] .catalogue-option-count,
+.catalogue-dropdown-menu .active .filter-count,
+.catalogue-dropdown-menu .active .catalogue-option-count {
+  background: var(--ink, #222);
+  color: #fff;
+}
+
+/* Sur les petits écrans, la barre latérale redevient un bloc au-dessus des articles */
+@media (max-width: 900px) {
+  .catalogue-section > .catalogue-toolbar {
+    width: 100%;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid var(--line, #e7e1d8);
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+}
+
+/* =====================================================================
+   17. PANNEAU DE FILTRES : UX/UI
+   ===================================================================== */
+
+/* E-tokiana — panneau de filtres UX/UI (compatible avec les utilitaires Tailwind) */
+.catalogue-filter-sidebar {
+  width: 100%;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #e9e5de;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(38, 33, 25, 0.045);
+}
+.catalogue-filter-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 15px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #f0ede8;
+}
+.catalogue-filter-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #24231f;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.catalogue-filter-icon {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #f5f2ec;
+  color: #5b594f;
+  font-size: 15px;
+}
+.catalogue-filter-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-shrink: 0;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #777168;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+.catalogue-filter-reset:hover {
+  border-color: #e9e4db;
+  background: #f8f6f2;
+  color: #24231f;
+}
+.catalogue-filter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.catalogue-filter-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 11px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #5f5b53;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease;
+}
+.catalogue-filter-option:hover {
+  background: #f8f6f2;
+  color: #24231f;
+}
+.catalogue-filter-option.is-active {
+  border-color: #e9e3d9;
+  background: #f5f2ec;
+  color: #24231f;
+  font-weight: 700;
+}
+.catalogue-filter-root {
+  font-weight: 650;
+  color: #34322d;
+}
+.catalogue-filter-label {
+  min-width: 0;
+  padding-left: calc(var(--filter-depth, 0) * 12px);
+}
+.catalogue-option-count {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-width: 27px;
+  height: 23px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border-radius: 7px;
+  background: #f0eee9;
+  color: #777168;
+  font-size: 11px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.catalogue-filter-option.is-active .catalogue-option-count {
+  background: #282720;
+  color: #fff;
+}
+@media (max-width: 900px) {
+  .catalogue-filter-sidebar {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .catalogue-filter-heading {
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }
+  .catalogue-filter-option {
+    padding: 10px;
+  }
+}
+@media (max-width: 360px) {
+  .catalogue-filter-title {
+    font-size: 14px;
+  }
+  .catalogue-filter-reset {
+    padding: 5px 6px;
+    font-size: 10px;
+  }
+}
+
+/* =====================================================================
+   18. AJUSTEMENTS VISUELS DU CATALOGUE
+   ===================================================================== */
+
+/* E-tokiana — ajustement catalogue : cartes de taille moyenne et typographie équilibrée */
+.catalogue-section > .product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px 18px;
+  align-items: start;
+  min-width: 0;
+  padding-top: 22px;
+}
+.catalogue-section > .product-grid > *,
+.catalogue-section > .product-grid .product-card,
+.catalogue-section > .product-grid .product-item {
+  min-width: 0;
+  max-width: 100%;
+}
+.catalogue-section .product-image-wrap {
+  max-height: 330px;
+}
+.catalogue-section .product-image-name {
+  font-size: clamp(12px, 1.05vw, 15px);
+  line-height: 1.25;
+}
+.catalogue-section .product-image-price strong {
+  font-size: clamp(12px, 1vw, 14px);
+}
+.catalogue-section .product-image-price del {
+  font-size: 10px;
+}
+.catalogue-section .product-image-category,
+.catalogue-section .product-image-detail {
+  font-size: 8px;
+}
+.catalogue-section .product-image-subcategory {
+  font-size: 10px;
+}
+.catalogue-section .product-variants-label,
+.catalogue-section .product-colors-label,
+.catalogue-section .product-sizes-label,
+.catalogue-section .product-rating-label {
+  font-size: 10px;
+}
+.catalogue-section .product-size-option {
+  min-width: 27px;
+  min-height: 23px;
+  font-size: 10px;
+}
+.catalogue-section .product-rating {
+  font-size: 10px;
+}
+.catalogue-section .catalogue-filter-sidebar {
+  padding: 16px;
+}
+.catalogue-section .catalogue-filter-heading {
+  margin-bottom: 14px;
+  padding-bottom: 13px;
+}
+.catalogue-section .catalogue-filter-title {
+  font-size: 14px;
+}
+.catalogue-section .catalogue-filter-option {
+  padding: 10px 11px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.catalogue-section .catalogue-option-count {
+  min-width: 25px;
+  height: 21px;
+  font-size: 10px;
+}
+@media (min-width: 901px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1100px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 14px;
+  }
+}
+@media (max-width: 520px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 10px;
+    padding-top: 18px;
+  }
+  .catalogue-section .product-image-wrap {
+    max-height: 260px;
+  }
+  .catalogue-section .product-image-caption {
+    left: 9px;
+    right: 9px;
+    bottom: 48px;
+  }
+  .catalogue-section .product-image-name {
+    font-size: 12px;
+  }
+  .catalogue-section .product-image-price strong {
+    font-size: 12px;
+  }
+  .catalogue-section .product-image-price {
+    gap: 3px 5px;
+    margin-top: 4px;
+  }
+}
+@media (max-width: 360px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* E-tokiana v4 — cartes produits verticales, taille moyenne, filtres plus aérés */
+@media (min-width: 901px) {
+  .catalogue-section {
+    grid-template-columns: minmax(250px, 285px) minmax(0, 1fr);
+    column-gap: clamp(26px, 2.8vw, 42px);
+  }
+}
+
+.catalogue-section > .product-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 30px 18px;
+}
+
+.catalogue-section .product-image-wrap {
+  position: relative;
+  height: auto;
+  max-height: none;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+}
+
+.catalogue-section .product-image-wrap::before {
+  content: none;
+  display: none;
+  padding-top: 0;
+}
+
+.catalogue-section .product-image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: center;
+}
+
+.catalogue-section .catalogue-filter-sidebar {
+  padding: 22px;
+}
+
+.catalogue-section .catalogue-filter-heading {
+  gap: 14px;
+  padding-bottom: 17px;
+  margin-bottom: 15px;
+}
+
+.catalogue-section .catalogue-filter-list {
+  gap: 7px;
+}
+
+.catalogue-section .catalogue-filter-option {
+  padding: 12px 13px;
+  font-size: 13px;
+  line-height: 1.5;
+  gap: 12px;
+}
+
+.catalogue-section .catalogue-option-count {
+  min-width: 28px;
+  height: 24px;
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 16px;
+  }
+}
+
+@media (max-width: 900px) {
+  .catalogue-section .catalogue-filter-sidebar {
+    padding: 20px;
+  }
+  .catalogue-section .catalogue-filter-list {
+    gap: 6px;
+  }
+  .catalogue-section .catalogue-filter-option {
+    padding: 11px 12px;
+  }
+}
+
+@media (max-width: 520px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 12px;
+  }
+  .catalogue-section .product-image-wrap {
+    aspect-ratio: 3 / 4;
+    max-height: none;
+  }
+  .catalogue-section .catalogue-filter-sidebar {
+    padding: 16px;
+  }
+  .catalogue-section .catalogue-filter-option {
+    padding: 10px 11px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* E-tokiana v5 — cartes produits un peu plus petites, toujours en portrait */
+@media (min-width: 1200px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px 16px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1199px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px 14px;
+  }
+}
+
+.catalogue-section .product-image-wrap {
+  aspect-ratio: 3 / 4;
+}
+
+/* E-tokiana v6 — réduction supplémentaire d'environ 20 % des cartes produits */
+@media (min-width: 1200px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 22px 14px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1199px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 22px 12px;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 900px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px 12px;
+  }
+}
+
+.catalogue-section .product-image-wrap {
+  aspect-ratio: 3 / 4;
+}
+
+/* E-tokiana v7 — densité du catalogue et filtres en colonnes sur écrans réduits */
+@media (min-width: 1200px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 20px 12px;
+  }
+}
+@media (min-width: 901px) and (max-width: 1199px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px 12px;
+  }
+}
+@media (min-width: 521px) and (max-width: 900px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px 10px;
+  }
+}
+@media (max-width: 900px) {
+  .catalogue-section .catalogue-filter-sidebar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 14px;
+    align-items: start;
+  }
+  .catalogue-section .catalogue-filter-heading {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding-bottom: 10px;
+  }
+  .catalogue-section .catalogue-filter-all {
+    grid-column: 1 / -1;
+  }
+  .catalogue-section .catalogue-filter-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .catalogue-section .catalogue-filter-option {
+    padding: 8px 9px;
+    font-size: 12px;
+  }
+  .catalogue-section .catalogue-extra-filter {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid #e7e5e4;
+    border-radius: 10px;
+  }
+  .catalogue-section .catalogue-extra-filter h4 {
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+}
+@media (max-width: 520px) {
+  .catalogue-section .catalogue-filter-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+  }
+  .catalogue-section .catalogue-filter-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .catalogue-section .catalogue-extra-filter {
+    padding: 8px;
+  }
+}
+
+.catalogue-section .catalogue-extra-choice {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 6px 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.catalogue-section .catalogue-extra-choice input {
+  flex: 0 0 auto;
+  accent-color: #171717;
+}
+.catalogue-section .catalogue-price-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+.catalogue-section .catalogue-price-inputs label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid #e7e5e4;
+  border-radius: 6px;
+  padding: 5px;
+  font-size: 11px;
+}
+.catalogue-section .catalogue-price-inputs input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  font-size: 12px;
+}
+.catalogue-section .catalogue-brand-search {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #e7e5e4;
+  border-radius: 7px;
+  padding: 7px;
+  font-size: 12px;
+}
+.catalogue-section .catalogue-brand-more {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.catalogue-section .catalogue-extra-filter [data-price-range] {
+  width: 100%;
+  accent-color: #171717;
+}
+
+/* =====================================================================
+   19. CARTES PRODUITS ET PAGINATION
+   ===================================================================== */
+
+/* E-tokiana v9 — cartes de taille stable + pagination */
+.catalogue-section > .product-grid {
+  grid-auto-rows: auto;
+  justify-content: start;
+}
+
+/* La carte garde la même largeur : le responsive change uniquement le nombre de cartes. */
+.catalogue-section > .product-grid > .product-card,
+.catalogue-section > .product-grid > .product-item {
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+}
+
+.catalogue-section > .product-grid {
+  grid-template-columns: repeat(6, 150px);
+  gap: 28px 12px;
+}
+
+/* Police produit légèrement augmentée, sans agrandir les cartes. */
+.catalogue-section .product-name {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.catalogue-section .product-meta {
+  font-size: 10px;
+}
+
+.catalogue-section .product-price > strong {
+  font-size: 17px;
+}
+
+.catalogue-pagination {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 28px;
+  padding: 14px 0 4px;
+}
+
+.catalogue-pagination button {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #e7e5e4;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.18s ease;
+}
+
+.catalogue-pagination button:hover:not(:disabled) {
+  border-color: var(--green);
+  color: var(--green);
+  transform: translateY(-1px);
+}
+
+.catalogue-pagination button.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.catalogue-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.catalogue-pagination-info {
+  margin: 0 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+@media (min-width: 901px) and (max-width: 1199px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(4, 150px);
+    gap: 28px 12px;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 900px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(3, 150px);
+    gap: 24px 12px;
+  }
+}
+
+@media (min-width: 361px) and (max-width: 520px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: repeat(2, 150px);
+    gap: 24px 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .catalogue-section > .product-grid {
+    grid-template-columns: 150px;
+    gap: 22px;
+  }
+}
+
+/* Notification ouverte : grand écran = 4 cartes, mais toujours 150px de large. */
+@media (min-width: 901px) {
+  body.notifications-open .catalogue-section > .product-grid {
+    grid-template-columns: repeat(4, 150px);
+  }
+}
+
+@media (max-width: 900px) {
+  body.notifications-open .catalogue-section > .product-grid {
+    grid-template-columns: repeat(3, 150px);
+  }
+}
+
+@media (max-width: 520px) {
+  body.notifications-open .catalogue-section > .product-grid {
+    grid-template-columns: repeat(2, 150px);
+  }
+}
+
+@media (max-width: 360px) {
+  body.notifications-open .catalogue-section > .product-grid {
+    grid-template-columns: 150px;
+  }
+}
+
+@media (max-width: 900px) {
+  .catalogue-pagination {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .catalogue-pagination {
+    flex-wrap: wrap;
+    margin-top: 22px;
+  }
+
+  .catalogue-pagination-info {
+    width: 100%;
+    text-align: center;
+    order: -1;
+    margin-bottom: 4px;
+  }
+}
+
+/* =====================================================================
+   20. COMPOSANTS D’INTERFACE ET PANNEAUX FLOTTANTS
+   ===================================================================== */
+
+/* =========================================================
+   POINT 2 — NOUVEL EN-TÊTE / NAVIGATION
+   ========================================================= */
+
+:root {
+  --nav-height: 78px;
+  --nav-radius: 18px;
+}
+
+/* =========================================================
+   BARRE D'ANNONCE
+   ========================================================= */
+
+.announcement {
+  position: relative;
+  z-index: 100;
+  min-height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 8px 20px;
+
+  background: var(--ink);
+  color: var(--white);
+
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.announcement-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  width: 100%;
+  max-width: 1360px;
+}
+
+.announcement-dot {
+  color: var(--orange);
+  font-size: 12px;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+
+  background: rgba(245, 241, 235, 0.94);
+
+  border-bottom: 1px solid rgba(217, 210, 200, 0.75);
+
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.site-header:hover {
+  background: rgba(245, 241, 235, 0.98);
+}
+
+/* =========================================================
+   CONTENEUR NAVIGATION
+   ========================================================= */
+
+.nav-shell {
+  width: min(100%, 1440px);
+  min-height: var(--nav-height);
+
+  margin: 0 auto;
+
+  padding: 14px clamp(20px, 4vw, 60px);
+
+  display: grid;
+
+  grid-template-columns:
+    auto
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  column-gap: clamp(25px, 4vw, 70px);
+}
+
+/* =========================================================
+   LOGO
+   ========================================================= */
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 10px;
+
+  flex-shrink: 0;
+
+  line-height: 1;
+
+  white-space: nowrap;
+
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.wordmark:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+
+  flex: 0 0 40px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid var(--ink);
+
+  border-radius: 12px;
+
+  background: var(--green);
+
+  color: #ffd0b6;
+
+  box-shadow: 0 5px 15px rgba(0, 126, 58, 0.12);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.wordmark:hover .brand-mark {
+  transform: rotate(-3deg) scale(1.03);
+
+  box-shadow: 0 8px 20px rgba(0, 126, 58, 0.17);
+}
+
+.brand-mark i {
+  font-size: 17px;
+}
+
+.wordmark-name {
+  font-size: clamp(22px, 2vw, 27px);
+  font-weight: 800;
+
+  letter-spacing: -0.075em;
+}
+
+.wordmark-dot {
+  color: var(--orange);
+
+  font-family: var(--serif);
+
+  font-size: 1.2em;
+  font-style: italic;
+
+  margin-left: 2px;
+}
+
+/* =========================================================
+   NAVIGATION PRINCIPALE
+   ========================================================= */
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: clamp(18px, 2.6vw, 38px);
+
+  min-width: 0;
+
+  margin: 0;
+}
+
+.nav-link {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 42px;
+
+  color: #514c46;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  white-space: nowrap;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.nav-link::after {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  bottom: 3px;
+
+  width: 0;
+  height: 2px;
+
+  border-radius: 999px;
+
+  background: var(--orange);
+
+  transition: width 0.25s ease;
+}
+
+.nav-link:hover {
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 100%;
+}
+
+.nav-link.active {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* =========================================================
+   ACTIONS À DROITE
+   ========================================================= */
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 8px;
+
+  min-width: max-content;
+
+  margin: 0;
+}
+
+
+/* =========================================================
+   POINT 2 — AJUSTEMENTS FINAUX EN-TÊTE / NAVIGATION
+   ---------------------------------------------------------
+   - Le site occupe presque toute la largeur, avec une petite
+     marge régulière sur les côtés.
+   - Le logo reste clairement à gauche.
+   - La navigation reste centrée.
+   - Les actions (dont notifications lorsqu'elles sont présentes)
+     restent regroupées à droite.
+   - Compatibilité avec les classes réellement utilisées dans
+     index.html : .nav-links a et .icon-button.
+   ========================================================= */
+
+@media (min-width: 901px) {
+  .nav-shell {
+    width: calc(100% - 32px);
+    max-width: none;
+    margin: 0 16px;
+    padding-left: clamp(16px, 2vw, 30px);
+    padding-right: clamp(16px, 2vw, 30px);
+    grid-template-columns: minmax(max-content, auto) minmax(0, 1fr) minmax(max-content, auto);
+    column-gap: clamp(24px, 3vw, 55px);
+  }
+
+  .nav-links {
+    justify-self: center;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .nav-links a,
+  .nav-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 42px;
+    color: #514c46;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: color 0.2s ease, transform 0.2s ease;
+  }
+
+  .nav-links a::after,
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 3px;
+    width: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--orange);
+    transition: width 0.25s ease;
+  }
+
+  .nav-links a:hover,
+  .nav-link:hover {
+    color: var(--ink);
+    transform: translateY(-1px);
+  }
+
+  .nav-links a:hover::after,
+  .nav-links a.active::after,
+  .nav-link:hover::after,
+  .nav-link.active::after {
+    width: 100%;
+  }
+
+  .nav-links a.active,
+  .nav-link.active {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .nav-actions {
+    justify-self: end;
+    margin-left: 0;
+    margin-right: 0;
+    min-width: max-content;
+    flex-wrap: nowrap;
+  }
+
+  /* Recherche : compatibilité avec le bouton réellement présent. */
+  .icon-button,
+  .nav-icon-button {
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+  }
+
+  /* Notifications et messagerie : toujours dans le bloc droit. */
+  .notification-button,
+  .chat-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .nav-shell {
+    width: calc(100% - 20px);
+    margin: 0 10px;
+  }
+}
+
+/* =====================================================================
+   21. BOUTONS, RECHERCHE ET COMMANDES
+   ===================================================================== */
+
+/* Boutons icônes */
+
+.nav-icon-button,
+.profile-button,
+.cart-button {
+  height: 42px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid transparent;
+
+  border-radius: 999px;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.nav-icon-button:hover,
+.profile-button:hover,
+.cart-button:hover {
+  transform: translateY(-1px);
+
+  background: var(--white);
+
+  border-color: var(--line);
+
+  box-shadow: 0 5px 15px rgba(23, 23, 23, 0.06);
+}
+
+/* Recherche */
+
+.nav-icon-button {
+  width: 42px;
+
+  padding: 0;
+
+  color: var(--ink);
+
+  font-size: 17px;
+}
+
+.nav-icon-button:hover {
+  color: var(--green);
+}
+
+/* =========================================================
+   COMPTE
+   ========================================================= */
+
+.profile-button {
+  gap: 8px;
+
+  padding: 0 14px;
+
+  background: rgba(255, 253, 249, 0.7);
+
+  border-color: var(--line);
+
+  color: var(--ink);
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.profile-icon {
+  width: 25px;
+  height: 25px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #f0ece5;
+
+  color: var(--ink);
+
+  font-size: 14px;
+}
+
+.profile-label {
+  white-space: nowrap;
+}
+
+/* =========================================================
+   PANIER
+   ========================================================= */
+
+.cart-button {
+  gap: 8px;
+
+  padding: 0 15px;
+
+  background: var(--ink);
+
+  color: var(--white);
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cart-button:hover {
+  background: #292929;
+
+  border-color: var(--ink);
+
+  color: var(--white);
+
+  box-shadow: 0 7px 18px rgba(23, 23, 23, 0.16);
+}
+
+.cart-icon {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-icon > i {
+  font-size: 15px;
+}
+
+.cart-count {
+  min-width: 18px;
+  height: 18px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 4px;
+
+  border-radius: 999px;
+
+  background: var(--orange);
+
+  color: white;
+
+  font-family: var(--mono);
+
+  font-size: 9px;
+  font-weight: 700;
+
+  line-height: 1;
+}
+
+/* =========================================================
+   BARRE DE RECHERCHE
+   ========================================================= */
+
+.search-bar {
+  border-top: 1px solid rgba(217, 210, 200, 0.8);
+
+  background: rgba(255, 253, 249, 0.97);
+
+  box-shadow: 0 12px 30px rgba(23, 23, 23, 0.08);
+
+  padding: 18px clamp(20px, 4vw, 60px) 20px;
+}
+
+.search-bar-inner {
+  width: min(100%, 1100px);
+
+  margin: 0 auto;
+
+  display: grid;
+
+  grid-template-columns:
+    110px
+    minmax(0, 1fr)
+    44px;
+
+  align-items: center;
+
+  gap: 16px;
+}
+
+.search-bar label {
+  color: var(--muted);
+
+  font-family: var(--mono);
+
+  font-size: 9px;
+
+  font-weight: 500;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+.search-field {
+  min-height: 46px;
+
+  display: flex;
+  align-items: center;
+
+  background: var(--paper);
+
+  border: 1px solid var(--line);
+
+  border-radius: 12px;
+
+  overflow: hidden;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.search-field:focus-within {
+  border-color: var(--green);
+
+  box-shadow: 0 0 0 4px rgba(0, 126, 58, 0.08);
+}
+
+.search-field > i {
+  flex: 0 0 auto;
+
+  margin-left: 15px;
+
+  color: var(--green);
+
+  font-size: 16px;
+}
+
+.search-bar input {
+  width: 100%;
+  min-width: 0;
+
+  padding: 12px 15px;
+
+  border: 0;
+
+  outline: 0;
+
+  background: transparent;
+
+  font-size: 13px;
+}
+
+.search-bar-inner > button {
+  width: 44px;
+  height: 44px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid var(--line);
+
+  border-radius: 12px;
+
+  background: var(--paper);
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.search-bar-inner > button:hover {
+  background: var(--ink);
+  color: var(--white);
+
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   MENU MOBILE
+   ========================================================= */
+
+.mobile-menu-button {
+  display: none;
+
+  width: 42px;
+  height: 42px;
+
+  align-items: center;
+  justify-content: center;
+
+  flex-direction: column;
+
+  gap: 5px;
+
+  padding: 0;
+
+  border: 1px solid var(--line);
+
+  border-radius: 12px;
+
+  background: var(--white);
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mobile-menu-button:hover {
+  background: #f0ece5;
+
+  transform: translateY(-1px);
+}
+
+.mobile-menu-button span {
+  display: block;
+
+  width: 18px;
+  height: 1.5px;
+
+  border-radius: 999px;
+
+  background: var(--ink);
+
+  transition:
+    transform 0.25s ease,
+    opacity 0.2s ease;
+}
+
+/* =====================================================================
+   22. MENU MOBILE ET ANIMATIONS
+   ===================================================================== */
+
+/* Animation hamburger */
+
+.mobile-menu-button.open span:nth-child(1) {
+  transform: translateY(6.5px) rotate(45deg);
+}
+
+.mobile-menu-button.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.mobile-menu-button.open span:nth-child(3) {
+  transform: translateY(-6.5px) rotate(-45deg);
+}
+
+/* =========================================================
+   NAVIGATION MOBILE
+   ========================================================= */
+
+.mobile-navigation {
+  display: none;
+
+  max-height: 0;
+
+  overflow: hidden;
+
+  background: rgba(255, 253, 249, 0.98);
+
+  border-top: 1px solid transparent;
+
+  transition:
+    max-height 0.35s ease,
+    border-color 0.25s ease;
+}
+
+.mobile-navigation.open {
+  max-height: 520px;
+
+  border-top-color: var(--line);
+}
+
+.mobile-navigation-inner {
+  padding: 22px 20px 20px;
+}
+
+.mobile-navigation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 14px;
+
+  color: var(--muted);
+
+  font-family: var(--mono);
+
+  font-size: 9px;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+.mobile-navigation-brand {
+  color: var(--green);
+}
+
+.mobile-navigation-links {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.mobile-nav-link {
+  display: grid;
+
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 13px 12px;
+
+  border: 1px solid transparent;
+
+  border-radius: 14px;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.active {
+  background: var(--paper);
+
+  border-color: var(--line);
+
+  transform: translateX(2px);
+}
+
+.mobile-nav-number {
+  color: var(--orange);
+
+  font-family: var(--mono);
+
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.mobile-nav-content {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.mobile-nav-content strong {
+  color: var(--ink);
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mobile-nav-content small {
+  color: var(--muted);
+
+  font-size: 10px;
+}
+
+.mobile-nav-link > i {
+  color: var(--muted);
+
+  font-size: 14px;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mobile-nav-link:hover > i,
+.mobile-nav-link.active > i {
+  color: var(--orange);
+
+  transform: translate(2px, -2px);
+}
+
+.mobile-navigation-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+
+  margin-top: 18px;
+  padding-top: 15px;
+
+  border-top: 1px solid var(--line);
+
+  color: var(--muted);
+
+  font-family: var(--mono);
+
+  font-size: 8px;
+
+  letter-spacing: 0.04em;
+
+  text-transform: uppercase;
+}
+
+/* =====================================================================
+   23. ADAPTATIONS TABLETTE ET MOBILE
+   ===================================================================== */
+
+/* =========================================================
+   TABLETTE
+   ========================================================= */
+
+@media (max-width: 1100px) {
+  .nav-shell {
+    column-gap: 20px;
+
+    padding-left: 25px;
+    padding-right: 25px;
+  }
+
+  .nav-links {
+    gap: 18px;
+  }
+
+  .nav-link {
+    font-size: 11px;
+  }
+
+  .profile-label {
+    display: none;
+  }
+
+  .profile-button {
+    width: 42px;
+
+    padding: 0;
+  }
+}
+
+/* =========================================================
+   PETITE TABLETTE
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .nav-shell {
+    grid-template-columns:
+      auto
+      minmax(0, 1fr)
+      auto;
+  }
+
+  .nav-links {
+    gap: 14px;
+  }
+
+  .nav-link {
+    font-size: 10px;
+  }
+
+  .cart-label {
+    display: none;
+  }
+
+  .cart-button {
+    width: 42px;
+
+    padding: 0;
+  }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 767px) {
+  .announcement {
+    min-height: 32px;
+
+    padding: 7px 15px;
+
+    font-size: 8px;
+  }
+
+  .announcement-inner {
+    gap: 8px;
+  }
+
+  .site-header {
+    position: sticky;
+    top: 0;
+  }
+
+  .nav-shell {
+    min-height: 68px;
+
+    padding: 10px 15px;
+
+    grid-template-columns:
+      minmax(0, 1fr)
+      auto;
+
+    gap: 10px;
+  }
+
+  .wordmark {
+    min-width: 0;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+
+    flex-basis: 36px;
+
+    border-radius: 10px;
+  }
+
+  .brand-mark i {
+    font-size: 15px;
+  }
+
+  .wordmark-name {
+    font-size: 22px;
+  }
+
+  /* Cacher navigation desktop */
+
+  .nav-links {
+    display: none;
+  }
+
+  /* Actions */
+
+  .nav-actions {
+    gap: 5px;
+  }
+
+  .nav-icon-button,
+  .profile-button,
+  .cart-button {
+    width: 38px;
+    height: 38px;
+
+    padding: 0;
+
+    border-radius: 11px;
+  }
+
+  .nav-icon-button {
+    background: transparent;
+
+    border-color: transparent;
+  }
+
+  .profile-button {
+    background: var(--white);
+    border-color: var(--line);
+  }
+
+  .profile-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .cart-button {
+    background: var(--ink);
+  }
+
+  .cart-label {
+    display: none;
+  }
+
+  .cart-count {
+    min-width: 17px;
+    height: 17px;
+
+    font-size: 8px;
+  }
+
+  /* Hamburger */
+
+  .mobile-menu-button {
+    display: flex;
+
+    width: 38px;
+    height: 38px;
+  }
+
+  /* Menu mobile */
+
+  .mobile-navigation {
+    display: block;
+  }
+
+  /* Recherche */
+
+  .search-bar {
+    padding: 14px 15px 16px;
+  }
+
+  .search-bar-inner {
+    grid-template-columns:
+      minmax(0, 1fr)
+      40px;
+
+    gap: 8px;
+  }
+
+  .search-bar label {
+    display: none;
+  }
+
+  .search-bar-inner > button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .search-field {
+    min-height: 42px;
+  }
+
+  .search-bar input {
+    padding: 10px 12px;
+
+    font-size: 12px;
+  }
+}
+
+/* =========================================================
+   TRÈS PETITS TÉLÉPHONES
+   ========================================================= */
+
+@media (max-width: 420px) {
+  .announcement-inner span:nth-child(3) {
+    display: none;
+  }
+
+  .announcement-dot {
+    display: none;
+  }
+
+  .nav-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .wordmark {
+    gap: 7px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+
+    flex-basis: 34px;
+  }
+
+  .wordmark-name {
+    font-size: 20px;
+  }
+
+  .nav-actions {
+    gap: 4px;
+  }
+
+  .nav-icon-button,
+  .profile-button,
+  .cart-button,
+  .mobile-menu-button {
+    width: 36px;
+    height: 36px;
   }
 }

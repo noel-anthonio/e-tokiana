@@ -1,0 +1,88 @@
+
+/* ===== Notifications à droite et site à gauche ===== */
+
+:root {
+  --notification-width: 650px;
+  --page-gutter: clamp(14px, 2vw, 28px);
+}
+
+/* Marges générales du site */
+body {
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+  box-sizing: border-box;
+  transition: padding 0.3s ease;
+}
+
+/* Quand les notifications sont ouvertes,
+   réserver leur place à droite */
+body.notifications-open {
+  padding-right: calc(var(--notification-width) + var(--page-gutter));
+  padding-left: var(--page-gutter);
+}
+
+/* Panneau des notifications à droite */
+#notification-modal.modal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+
+  width: var(--notification-width);
+  height: 100vh;
+  max-height: 100vh;
+  padding: 0;
+  margin: 0;
+
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+
+  background: transparent;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 10000;
+
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#notification-modal.modal.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Contenu du panneau */
+#notification-modal .notification-panel {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 100%;
+  max-height: 100vh;
+  margin: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+  border-radius: 0;
+  transform: none;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --notification-width: 290px;
+    --page-gutter: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --notification-width: 100vw;
+    --page-gutter: 10px;
+  }
+
+  body.notifications-open {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}

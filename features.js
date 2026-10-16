@@ -49,11 +49,13 @@
   const roleClass = (role) =>
     ["owner", "admin"].includes(role)
       ? "owner"
-      : role === "seller"
+      : ["seller", "staff"].includes(role)
         ? "seller"
         : "client";
-  const roleLabel = (role) =>
-    ({ owner: "Admin", admin: "Admin", seller: "Vendeur" })[role] || "Client";
+  const roleLabel = (role, user) =>
+    role === "staff"
+      ? user?.staffRole || "Équipe"
+      : { owner: "Admin", admin: "Admin", seller: "Vendeur" }[role] || "Client";
   const initialsOf = (name) => {
     const parts = String(name || "U")
       .trim()
@@ -241,6 +243,12 @@
           addNotification(
             adminIdentity.email,
             `Nouveau vendeur inscrit : ${user.name}`,
+            SYSTEM,
+          );
+        else if ((user.role || "client") === "client")
+          addNotification(
+            adminIdentity.email,
+            `Nouveau client inscrit : ${user.name}`,
             SYSTEM,
           );
       });
@@ -1025,9 +1033,19 @@
   ];
   const GROUP_KINDS = { alert: ["alert", "promo", "reminder"] };
   const staffLike = () =>
-    ["owner", "admin", "seller"].includes(currentUser?.role);
+    ["owner", "admin", "seller", "staff"].includes(currentUser?.role);
+  const canHandleOrders = () =>
+    ["owner", "admin", "seller"].includes(currentUser?.role) ||
+    (currentUser?.role === "staff" &&
+      ["Administrateur", "Gestionnaire commandes"].includes(
+        currentUser.staffRole,
+      ));
   const canManage = (product) =>
     isStaff(currentUser) ||
+    (currentUser?.role === "staff" &&
+      ["Administrateur", "Gestionnaire stocks"].includes(
+        currentUser.staffRole,
+      )) ||
     (currentUser?.role === "seller" && product.sellerId === currentUser.id);
 
   const kindOf = (notification) => {
@@ -1153,7 +1171,7 @@
           });
         d.metas.push({ pill: `ord-status s${index}`, text: order.status });
         if (staffLike()) {
-          if (order.status !== "Livrée")
+          if (order.status !== "Livrée" && canHandleOrders())
             d.actions.push([
               "advance",
               "bi-check2-circle",
@@ -1185,7 +1203,8 @@
             d.actions.push(["restock", "bi-plus-circle", "+10 en stock", true]);
           d.actions.push(["manage", "bi-box-seam", "Gérer le stock"]);
         }
-      }
+      } else if (staffLike())
+        d.actions.push(["manage", "bi-box-seam", "Gérer le stock", true]);
     } else if (kind === "promo") {
       d.title = /De retour/i.test(text) ? "Retour en stock" : "Promotion";
       if (product) {
@@ -1207,8 +1226,13 @@
       );
       d.actions.push(["cart", "bi-cart3", "Voir le panier", true]);
     } else {
-      const seller = /vendeur inscrit/i.test(text);
-      d.title = seller ? "Nouveau vendeur" : author || "Notification";
+      const seller = /vendeur inscrit/i.test(text),
+        client = /client inscrit/i.test(text);
+      d.title = seller
+        ? "Nouveau vendeur"
+        : client
+          ? "Nouveau client"
+          : author || "Notification";
       if (seller && staffLike())
         d.actions.push([
           "sellers",
@@ -1216,6 +1240,8 @@
           "Voir les vendeurs",
           true,
         ]);
+      if (client && staffLike())
+        d.actions.push(["customers", "bi-people", "Voir les clients", true]);
     }
     return d;
   }
@@ -1333,7 +1359,7 @@
   }
 
   function advanceOrder(order) {
-    if (!order || !staffLike()) return;
+    if (!order || !canHandleOrders()) return;
     const next = {
       "Nouvelle commande": "Validée",
       Validée: "En préparation",
@@ -1461,6 +1487,10 @@
       saveNotifications();
       renderNotifications();
       return goAdmin("sellers");
+    } else if (action === "customers") {
+      saveNotifications();
+      renderNotifications();
+      return goAdmin("customers");
     }
     saveNotifications();
     renderNotifications();
@@ -1707,7 +1737,8 @@
 
   /* ----- Notifications automatiques (panier oublié, favoris en promo / de retour) ----- */
   function autoNotify() {
-    if (!currentUser?.email || isStaff(currentUser)) return;
+    if (!currentUser?.email || !["client", "seller"].includes(currentUser.role))
+      return;
     const email = currentUser.email;
     const all = parse(localStorage.getItem(AUTO_KEY)) || {};
     const mine = (all[email] ||= { watch: null, cart: "" });
@@ -1764,6 +1795,11 @@
     { childList: true },
   );
   new MutationObserver(() => {
+    // la page se réduit pour laisser la place au panneau (voir fluid.css)
+    document.body.classList.toggle(
+      "notifications-open",
+      notifModal.classList.contains("open"),
+    );
     if (!notifModal.classList.contains("open")) {
       newIds.clear();
       notifFilter = "all";
@@ -1856,7 +1892,7 @@
       ? rows
           .map(
             ({ user, last, unread }) =>
-              `<button type="button" class="msgr-contact ${user.email === active ? "active" : ""}" data-msgr-contact="${esc(user.email)}"><span class="space-avatar mini ${roleClass(user.role)}">${esc(initialsOf(user.name || user.email))}</span><span class="mc-main"><strong>${esc(user.name || user.email)}</strong><small>${last ? (last.from === me ? "Vous : " : "") + esc(String(last.text).slice(0, 42)) : roleLabel(user.role)}</small></span><span class="mc-meta">${last ? `<time>${timeAgo(last.date)}</time>` : ""}${unread ? `<b>${unread}</b>` : ""}</span></button>`,
+              `<button type="button" class="msgr-contact ${user.email === active ? "active" : ""}" data-msgr-contact="${esc(user.email)}"><span class="space-avatar mini ${roleClass(user.role)}">${esc(initialsOf(user.name || user.email))}</span><span class="mc-main"><strong>${esc(user.name || user.email)}</strong><small>${last ? (last.from === me ? "Vous : " : "") + esc(String(last.text).slice(0, 42)) : roleLabel(user.role, user)}</small></span><span class="mc-meta">${last ? `<time>${timeAgo(last.date)}</time>` : ""}${unread ? `<b>${unread}</b>` : ""}</span></button>`,
           )
           .join("")
       : '<p class="modal-muted msgr-none">Aucun contact trouvé.</p>';
@@ -1868,7 +1904,7 @@
     const email = $("#chat-recipient").value;
     const user = chatUsers().find((item) => item.email === email);
     head.innerHTML = user
-      ? `<button type="button" class="msgr-back" aria-label="Retour aux contacts"><i class="bi bi-arrow-left" aria-hidden="true"></i></button><span class="space-avatar mini ${roleClass(user.role)}">${esc(initialsOf(user.name || user.email))}</span><div><strong>${esc(user.name || user.email)}</strong><small>${roleLabel(user.role)} · clic droit sur un message pour réagir</small></div>`
+      ? `<button type="button" class="msgr-back" aria-label="Retour aux contacts"><i class="bi bi-arrow-left" aria-hidden="true"></i></button><span class="space-avatar mini ${roleClass(user.role)}">${esc(initialsOf(user.name || user.email))}</span><div><strong>${esc(user.name || user.email)}</strong><small>${roleLabel(user.role, user)} · clic droit sur un message pour réagir</small></div>`
       : '<button type="button" class="msgr-back" aria-label="Retour aux contacts"><i class="bi bi-arrow-left" aria-hidden="true"></i></button><div><strong>Aucune conversation</strong><small>Choisissez un contact</small></div>';
   }
 
@@ -1900,4 +1936,19 @@
 
   /* ---------- Initialisation ---------- */
   onOpen("#account-modal", enhanceAccountHistory);
+
+  // Fonctions partagées avec admin.js
+  window.EtoFeatures = {
+    nativeSet,
+    logAction,
+    stockOf,
+    setStock,
+    unlimited,
+    stockState,
+    LOW,
+    advanceOrder,
+    decorateStockRows,
+    openChatWith,
+    readLog,
+  };
 })();

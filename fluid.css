@@ -1,0 +1,273 @@
+/* ==========================================================================
+   E-tokiana — fluid.css
+   À charger EN DERNIER (après catalogue.css et panels.css).
+
+   1. Grille de produits fluide : elle occupe toute la place disponible, que le
+      panneau de notifications soit ouvert ou fermé
+   2. Détails du produit au survol (catégorie, sous-catégorie, matière) ;
+      sur écran tactile : un appui sur la carte les affiche
+   3. Tailles adaptées aux tablettes
+   4. Filtres du catalogue sur téléphone : sections repliables, prix en Ar,
+      filtres actifs en puces, pied de page « Effacer tout / Voir N articles »
+   5. Panneau de notifications : la page se réduit, rien n'est recouvert
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------
+   1. Grille fluide
+   --------------------------------------------------------------------- */
+.catalogue-section {
+  --catalogue-card-min: 400px;   /* ← largeur MINIMALE d'une carte : augmentez pour des produits plus grands */
+  --catalogue-row-gap: 30px;
+  --catalogue-card-gap: 20px;
+}
+
+.catalogue-section > #product-grid {
+  grid-template-columns: repeat(auto-fill, minmax(var(--catalogue-card-min), 1fr));
+  justify-content: stretch;
+  gap: var(--catalogue-row-gap) var(--catalogue-card-gap);
+}
+
+.catalogue-section > #product-grid > .product-card,
+.catalogue-section > #product-grid > .product-item {
+  width: auto;
+  max-width: none;
+}
+
+@media (min-width: 1400px) {
+  .catalogue-section { --catalogue-card-min: 210px; }   /* grands écrans */
+}
+
+/* ---------------------------------------------------------------------
+   3. Tablettes : cartes plus grandes (3 colonnes en portrait)
+   --------------------------------------------------------------------- */
+@media (min-width: 701px) and (max-width: 1100px) {
+  .catalogue-section {
+    --catalogue-card-min: 240px;   /* tablettes */
+    --catalogue-row-gap: 32px;
+    --catalogue-card-gap: 20px;
+  }
+  .catalogue-section #product-grid .product-image-name { font-size: 15px; }
+  .catalogue-section #product-grid .product-image-price strong { font-size: 15px; }
+  .catalogue-section #product-grid .product-image-subcategory,
+  .catalogue-section #product-grid .product-image-category,
+  .catalogue-section #product-grid .product-image-detail { font-size: 10.5px; }
+  .catalogue-section #product-grid .product-image-action { min-height: 42px; }
+  .catalogue-section #product-grid .favorite-button { height: 36px; width: 36px; }
+}
+
+/* ---------------------------------------------------------------------
+   Téléphone : 2 colonnes qui remplissent la largeur (1 sur très petit écran)
+   --------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  .catalogue-section > #product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 12px;
+  }
+}
+@media (max-width: 330px) {
+  .catalogue-section > #product-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------------------------------------------------------------------
+   2. Détails au survol
+   --------------------------------------------------------------------- */
+.catalogue-section #product-grid .product-image-wrap::after {
+  background: linear-gradient(180deg, rgba(16, 19, 17, 0) 0%, rgba(16, 19, 17, .52) 38%, rgba(16, 19, 17, .92) 100%);
+  inset: 18% 0 0;
+}
+
+.catalogue-section #product-grid .product-image-category,
+.catalogue-section #product-grid .product-image-subcategory,
+.catalogue-section #product-grid .product-image-detail {
+  margin-bottom: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height .28s var(--ease), opacity .2s ease, margin .28s var(--ease);
+}
+
+.catalogue-section #product-grid .product-card:hover .product-image-category,
+.catalogue-section #product-grid .product-card:focus-within .product-image-category,
+.catalogue-section #product-grid .product-card.is-peek .product-image-category { margin-bottom: 3px; max-height: 14px; opacity: 1; }
+
+.catalogue-section #product-grid .product-card:hover .product-image-subcategory,
+.catalogue-section #product-grid .product-card:focus-within .product-image-subcategory,
+.catalogue-section #product-grid .product-card.is-peek .product-image-subcategory { margin-bottom: 3px; max-height: 16px; opacity: 1; }
+
+.catalogue-section #product-grid .product-card:hover .product-image-detail,
+.catalogue-section #product-grid .product-card:focus-within .product-image-detail,
+.catalogue-section #product-grid .product-card.is-peek .product-image-detail { margin-bottom: 5px; max-height: 14px; opacity: 1; }
+
+/* Souris : le nom et le prix restent en bas, les boutons apparaissent au survol */
+@media (hover: hover) and (pointer: fine) {
+  .catalogue-section #product-grid .product-image-caption {
+    bottom: 12px;
+    transition: bottom .28s var(--ease);
+  }
+  .catalogue-section #product-grid .product-card:hover .product-image-caption,
+  .catalogue-section #product-grid .product-card:focus-within .product-image-caption { bottom: 56px; }
+}
+
+/* Tactile : boutons toujours visibles, détails après un appui sur la carte */
+@media (hover: none) {
+  .catalogue-section #product-grid .product-card { -webkit-tap-highlight-color: transparent; }
+  .catalogue-section #product-grid .product-image-wrap { cursor: pointer; }
+}
+
+/* ---------------------------------------------------------------------
+   4. Filtres : prix en Ar (remplace l'interface « $ » d'origine)
+   --------------------------------------------------------------------- */
+.catalogue-price-filter .fs-native { display: none; }
+.fs-price { display: grid; gap: 12px; }
+.fs-price-out { align-items: baseline; display: flex; font-size: 13px; gap: 8px; justify-content: space-between; }
+.fs-price-out strong { font-size: 14px; font-variant-numeric: tabular-nums; }
+.fs-range { accent-color: var(--green); margin: 0; width: 100%; }
+.fs-price-fields { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+.fs-price-fields label { align-items: center; background: var(--white); border: 1px solid var(--line); border-radius: 10px; display: flex; gap: 6px; min-width: 0; padding: 0 10px; }
+.fs-price-fields label:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px rgba(0, 126, 58, .1); }
+.fs-price-fields span { color: var(--muted); font-size: 11px; }
+.fs-price-fields input { background: transparent; border: 0; flex: 1; font-size: 14px; min-height: 42px; min-width: 0; outline: 0; width: 100%; }
+.fs-price-fields em { color: var(--muted); font-size: 12px; font-style: normal; }
+.fs-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.fs-preset { background: var(--white); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 600; min-height: 34px; padding: 0 12px; }
+.fs-preset:hover { border-color: var(--ink); }
+.fs-preset.is-active { background: var(--ink); border-color: var(--ink); color: var(--white); }
+
+/* Sections repliables : seulement sur téléphone */
+.fs-acc-head, .mobile-clear, .catalogue-active-chips { display: none; }
+
+@media (max-width: 700px) {
+  /* feuille plus haute, défilement contenu */
+  #catalogue-filter-sidebar {
+    max-height: min(88dvh, 780px);
+    overscroll-behavior: contain;
+    padding: 0;
+  }
+  #catalogue-filter-sidebar .catalogue-filter-heading { margin: 0 0 4px; padding: 9px 16px; }
+  #catalogue-filter-sidebar .catalogue-filter-reset { display: none; }
+  #catalogue-filter-sidebar .catalogue-filter-title { font-size: 17px; }
+
+  .fs-acc { border-bottom: 1px solid var(--line); margin: 0 16px; }
+  .fs-acc-head {
+    align-items: center;
+    display: flex;
+    font-size: 15px;
+    font-weight: 650;
+    gap: 10px;
+    min-height: 58px;
+    padding: 0 2px;
+    text-align: left;
+    width: 100%;
+  }
+  .fs-acc-head > span { flex: 1; }
+  .fs-acc-sum {
+    background: #e7efe8;
+    border-radius: 999px;
+    color: var(--green);
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 600;
+    max-width: 52%;
+    overflow: hidden;
+    padding: 3px 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fs-acc-sum:empty { display: none; }
+  .fs-acc-head > i { color: var(--muted); transition: transform .2s ease; }
+  .fs-acc.is-open .fs-acc-head > i { transform: rotate(180deg); }
+  .fs-acc-body { display: none; padding: 2px 0 18px; }
+  .fs-acc.is-open .fs-acc-body { display: block; }
+
+  /* contenu des sections */
+  .fs-acc-body > .catalogue-extra-filter { border-top: 0; margin: 0; padding: 0; }
+  .fs-acc-body > .catalogue-extra-filter > h4 { display: none; }
+  #catalogue-filter-sidebar .catalogue-filter-all { margin: 0 0 6px; min-height: 50px; }
+  #catalogue-filter-sidebar .catalogue-filter-list { grid-template-columns: 1fr; gap: 6px; }
+  #catalogue-filter-sidebar .catalogue-filter-option { font-size: 14px; min-height: 50px; padding: 10px 12px; }
+  #catalogue-filter-sidebar .catalogue-availability-filter { display: block; }
+  .fs-acc-body .catalogue-extra-choice { font-size: 14px; gap: 12px; min-height: 48px; }
+  .fs-acc-body .catalogue-extra-choice input { flex-basis: 22px; height: 22px; width: 22px; }
+
+  /* pied de feuille : Effacer tout + Voir N articles */
+  .mobile-apply-bar {
+    background: var(--white);
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 10px;
+    margin: 8px 0 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .mobile-clear {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    font-size: 14px;
+    font-weight: 650;
+    min-height: 50px;
+    padding: 0 18px;
+  }
+  .mobile-clear:hover { border-color: var(--ink); }
+  .mobile-apply { flex: 1; min-height: 50px; }
+
+  /* filtres actifs sous la barre */
+  .catalogue-active-chips {
+    display: flex;
+    gap: 6px;
+    grid-column: 1 / -1;
+    overflow-x: auto;
+    padding: 0 0 2px;
+    scrollbar-width: none;
+  }
+  .catalogue-active-chips:empty { display: none; }
+  .catalogue-active-chips::-webkit-scrollbar { display: none; }
+  .active-chip {
+    align-items: center;
+    background: #e7efe8;
+    border: 1px solid #bcd6c3;
+    border-radius: 999px;
+    color: var(--green);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 600;
+    gap: 6px;
+    min-height: 32px;
+    padding: 0 6px 0 12px;
+    white-space: nowrap;
+  }
+  .active-chip i { align-items: center; border-radius: 50%; display: inline-flex; font-size: 11px; height: 22px; justify-content: center; width: 22px; }
+  .active-chip:active i { background: rgba(0, 126, 58, .15); }
+  .active-chip.clear { background: transparent; border-color: var(--line); color: var(--muted); padding: 0 12px; }
+}
+
+/* Sur ordinateur / tablette, les sections restent ouvertes comme avant */
+@media (min-width: 701px) {
+  .fs-acc-body { display: block; }
+}
+
+/* ---------------------------------------------------------------------
+   5. Panneau de notifications : la page se réduit, rien n'est recouvert
+   --------------------------------------------------------------------- */
+:root { --notif-w: clamp(340px, 30vw, 420px); }
+
+body { transition: padding-right .25s ease; }
+
+@media (min-width: 701px) {
+  body.notifications-open { padding-right: var(--notif-w); }
+  #notification-modal.modal { width: var(--notif-w); }
+  /* le message flottant reste centré dans la zone visible */
+  body.notifications-open .toast { left: calc((100vw - var(--notif-w)) / 2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
+  .catalogue-section #product-grid .product-image-category,
+  .catalogue-section #product-grid .product-image-subcategory,
+  .catalogue-section #product-grid .product-image-detail,
+  .catalogue-section #product-grid .product-image-caption { transition: none; }
+}

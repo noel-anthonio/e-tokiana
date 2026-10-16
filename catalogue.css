@@ -1,0 +1,1624 @@
+/* =====================================================================
+   E-tokiana — catalogue.css
+   À charger APRÈS styles.css / ui-upgrade.css / spaces.css
+
+   Objectifs UX/UI :
+   - cartes produit de taille stable : le responsive change surtout le
+     nombre de colonnes, pas la taille visuelle des cartes ;
+   - desktop large : 6 cartes / ligne ;
+   - écran moyen : 4 cartes / ligne ;
+   - tablette : 3–4 cartes selon l'espace réellement disponible ;
+   - mobile : 2 cartes, puis 1 uniquement sur les très petits écrans ;
+   - filtres aérés, catégories principales uniquement ;
+   - mobile : barre Filtres + feuille ergonomique depuis le bas ;
+   - détails produit, couleurs, tailles et notes visibles lorsqu'ils
+     existent dans le HTML généré par app.js.
+   ===================================================================== */
+
+.catalogue-section {
+  --catalogue-card-width: 158px;
+  --catalogue-card-gap: 18px;
+  --catalogue-row-gap: 28px;
+  --catalogue-filter-width: 252px;
+}
+
+/* ---------------------------------------------------------------------
+   Mise en page générale
+   --------------------------------------------------------------------- */
+.catalogue-section > #product-grid {
+  display: grid;
+  grid-template-columns: repeat(6, var(--catalogue-card-width));
+  justify-content: center;
+  align-items: start;
+  gap: var(--catalogue-row-gap) var(--catalogue-card-gap);
+  width: 100%;
+  min-width: 0;
+  padding-top: 24px;
+}
+
+.catalogue-section > #product-grid > .product-card,
+.catalogue-section > #product-grid > .product-item {
+  width: var(--catalogue-card-width);
+  min-width: 0;
+  max-width: var(--catalogue-card-width);
+}
+
+.catalogue-section > #product-grid > [hidden] {
+  display: none !important;
+}
+
+/* Format portrait stable : la largeur de la carte ne dépend pas du nombre
+   de colonnes. La hauteur suit le même ratio sur tous les écrans. */
+.catalogue-section #product-grid .product-image-wrap {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: none;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.catalogue-section #product-grid .product-image-wrap::before {
+  content: none;
+  display: none;
+  padding-top: 0;
+}
+
+.catalogue-section #product-grid .product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------------------------------------------------------------------
+   Informations produit
+   --------------------------------------------------------------------- */
+.catalogue-section #product-grid .product-image-caption {
+  left: 10px;
+  right: 10px;
+  bottom: 56px;
+}
+
+.catalogue-section #product-grid .product-image-category {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 9px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalogue-section #product-grid .product-image-subcategory {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  margin-bottom: 2px;
+  font-size: 10px;
+  line-height: 1.3;
+  max-height: 14px;
+  overflow: hidden;
+}
+
+.catalogue-section #product-grid .product-image-detail {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 9px;
+  line-height: 1.3;
+  max-height: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalogue-section #product-grid .product-image-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.22;
+}
+
+.catalogue-section #product-grid .product-image-price {
+  gap: 3px 6px;
+  margin-top: 5px;
+}
+
+.catalogue-section #product-grid .product-image-price strong {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.catalogue-section #product-grid .product-image-price del {
+  font-size: 10px;
+}
+
+.catalogue-section #product-grid .product-image-price .price-currency {
+  font-size: 9px;
+}
+
+/* ---------------------------------------------------------------------
+   Variantes : couleurs, tailles, notes
+   --------------------------------------------------------------------- */
+.catalogue-section #product-grid .product-variants,
+.catalogue-section #product-grid .product-colors,
+.catalogue-section #product-grid .product-sizes,
+.catalogue-section #product-grid .product-rating {
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.catalogue-section #product-grid .product-variants-label,
+.catalogue-section #product-grid .product-colors-label,
+.catalogue-section #product-grid .product-sizes-label,
+.catalogue-section #product-grid .product-rating-label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted, #6b6b63);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.catalogue-section #product-grid .product-color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 0;
+}
+
+.catalogue-section #product-grid .product-color-swatch {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(25, 25, 25, .22);
+  box-shadow: inset 0 0 0 2px #fff;
+}
+
+.catalogue-section #product-grid .product-size-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 0;
+}
+
+.catalogue-section #product-grid .product-size-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 24px;
+  padding: 3px 6px;
+  border: 1px solid var(--line, #ddd6cc);
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.catalogue-section #product-grid .product-rating {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 10px;
+}
+
+.catalogue-section #product-grid .product-rating-stars {
+  color: #d99b20;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.catalogue-section #product-grid .product-rating-count {
+  color: var(--muted, #6b6b63);
+}
+
+/* ---------------------------------------------------------------------
+   Actions / badges
+   --------------------------------------------------------------------- */
+.catalogue-section #product-grid .product-tag,
+.catalogue-section #product-grid .discount-badge,
+.catalogue-section #product-grid .stock-badge {
+  font-size: 9px;
+  padding: 4px 7px;
+}
+
+.catalogue-section #product-grid .favorite-button {
+  width: 32px;
+  height: 32px;
+  top: 8px;
+  right: 8px;
+  font-size: 16px;
+}
+
+.catalogue-section #product-grid .product-image-actions {
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  gap: 6px;
+}
+
+.catalogue-section #product-grid .product-image-action {
+  min-height: 38px;
+  border-radius: 9px;
+  padding: 0;
+}
+
+.catalogue-section #product-grid .product-image-action i {
+  font-size: 16px;
+}
+
+/* ---------------------------------------------------------------------
+   Filtres desktop / tablette
+   --------------------------------------------------------------------- */
+@media (min-width: 901px) {
+  .catalogue-section {
+    display: grid;
+    grid-template-columns: minmax(225px, var(--catalogue-filter-width)) minmax(0, 1fr);
+    column-gap: clamp(24px, 2.5vw, 40px);
+    align-items: start;
+  }
+
+  .catalogue-section > .section-heading {
+    grid-column: 1 / -1;
+    margin-bottom: 6px;
+  }
+
+  .catalogue-section > .catalogue-toolbar {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    margin-top: 24px;
+    min-width: 0;
+  }
+
+  .catalogue-section > #product-grid,
+  .catalogue-section > .empty-state {
+    grid-column: 2;
+  }
+
+  .catalogue-section .catalogue-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+}
+
+.catalogue-section .catalogue-filter-sidebar {
+  padding: 20px;
+  border: 1px solid var(--line, #e5e0d8);
+  border-radius: 16px;
+  background: var(--white, #fff);
+  box-shadow: 0 8px 28px rgba(23, 23, 23, .05);
+}
+
+.catalogue-filter-heading {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line, #e5e0d8);
+}
+
+.catalogue-filter-title {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.catalogue-filter-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 10px;
+  background: #f1f5f1;
+  color: var(--green);
+}
+
+.catalogue-filter-reset {
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid var(--line, #e5e0d8);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted, #777168);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.catalogue-filter-reset:hover {
+  border-color: var(--green);
+  background: #f3f7f3;
+  color: var(--green);
+}
+
+.catalogue-filter-list {
+  display: grid;
+  gap: 7px;
+}
+
+.catalogue-filter-option {
+  min-height: 44px;
+  padding: 10px 11px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.35;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+
+.catalogue-filter-option:hover {
+  border-color: var(--line, #e5e0d8);
+  background: #faf9f6;
+  transform: translateY(-1px);
+}
+
+.catalogue-filter-option.is-active {
+  border-color: rgba(0, 126, 58, .18);
+  background: #edf4ee;
+  color: var(--green);
+  font-weight: 650;
+}
+
+.catalogue-option-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 27px;
+  height: 23px;
+  padding: 0 7px;
+  border-radius: 7px;
+  background: #f0eee9;
+  color: #777168;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.catalogue-filter-option.is-active .catalogue-option-count {
+  background: var(--green);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------------
+   Disponibilité / Prix / Marque : présentation type e-commerce
+   --------------------------------------------------------------------- */
+.catalogue-extra-filter {
+  display: block;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line, #e5e0d8);
+}
+
+.catalogue-extra-filter h4 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.catalogue-extra-choice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.catalogue-extra-choice input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  accent-color: var(--green);
+}
+
+.catalogue-price-filter input[type='range'] {
+  width: 100%;
+  margin: 4px 0 12px;
+  accent-color: var(--ink);
+}
+
+.catalogue-price-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.catalogue-price-inputs label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--line, #e5e0d8);
+  border-radius: 8px;
+  color: var(--muted, #777168);
+  font-size: 11px;
+}
+
+.catalogue-price-inputs input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.catalogue-brand-search {
+  width: 100%;
+  min-height: 40px;
+  margin-bottom: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #e5e0d8);
+  border-radius: 9px;
+  outline: 0;
+  font-size: 12px;
+}
+
+.catalogue-brand-search:focus,
+.catalogue-price-inputs label:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(0, 126, 58, .08);
+}
+
+.catalogue-brand-options {
+  display: grid;
+  gap: 2px;
+}
+
+.catalogue-brand-more {
+  margin-top: 6px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+/* ---------------------------------------------------------------------
+   Pagination
+   --------------------------------------------------------------------- */
+#catalogue-pagination {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  margin-top: 30px;
+  padding: 18px 0 4px;
+  border-top: 1px solid var(--line, #e5e0d8);
+}
+
+.catalogue-pagination-info {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.catalogue-pagination-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+#catalogue-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#catalogue-pagination button:hover:not(:disabled):not(.is-active) {
+  border-color: var(--ink);
+  background: #faf9f6;
+}
+
+#catalogue-pagination button.is-active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+}
+
+#catalogue-pagination button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.catalogue-pagination-gap {
+  min-width: 22px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------
+   Tablette : 4 colonnes quand la zone catalogue le permet
+   --------------------------------------------------------------------- */
+@media (min-width: 901px) and (max-width: 1399px) {
+  .catalogue-section > #product-grid {
+    grid-template-columns: repeat(4, var(--catalogue-card-width));
+  }
+}
+
+@media (min-width: 701px) and (max-width: 900px) {
+  .catalogue-section {
+    --catalogue-card-width: 158px;
+  }
+
+  .catalogue-section > #product-grid {
+    grid-template-columns: repeat(4, var(--catalogue-card-width));
+    justify-content: center;
+    gap: 24px 14px;
+  }
+
+  .catalogue-section .catalogue-filter-sidebar {
+    padding: 18px;
+  }
+
+  .catalogue-filter-list,
+  .catalogue-extra-filter {
+    gap: 8px;
+  }
+
+  /* Plusieurs colonnes pour éviter un filtre vertical interminable. */
+  .catalogue-section .catalogue-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: start;
+  }
+
+  #catalogue-filter-sidebar {
+    grid-column: 1 / -1;
+  }
+
+  .catalogue-extra-filter {
+    margin-top: 0;
+    padding-top: 14px;
+  }
+
+  #catalogue-pagination {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Mobile : barre sticky + feuille de filtres
+   --------------------------------------------------------------------- */
+.mobile-filter-button,
+.catalogue-mobile-chips,
+.mobile-sheet-close,
+.mobile-apply-bar,
+.catalogue-sheet-backdrop {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .catalogue-section {
+    display: block;
+    --catalogue-card-width: 158px;
+  }
+
+  .catalogue-section > #product-grid {
+    grid-template-columns: repeat(2, var(--catalogue-card-width));
+    justify-content: center;
+    gap: 22px 12px;
+    padding-top: 18px;
+  }
+
+  .catalogue-section > #product-grid > .product-card,
+  .catalogue-section > #product-grid > .product-item {
+    width: var(--catalogue-card-width);
+    max-width: var(--catalogue-card-width);
+  }
+
+  .catalogue-section > .catalogue-toolbar {
+    width: 100%;
+  }
+
+  .catalogue-section > .catalogue-toolbar {
+    position: relative;
+    z-index: 10;
+  }
+
+  .catalogue-section .catalogue-controls {
+    display: contents;
+  }
+
+  .catalogue-section > .catalogue-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    margin: 12px 0 0;
+    padding: 9px 0;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 64px;
+    z-index: 20;
+  }
+
+  .mobile-filter-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-width: 0;
+    height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: var(--white);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .mobile-filter-button i {
+    font-size: 15px;
+  }
+
+  .mobile-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--green);
+    color: #fff;
+    font-size: 10px;
+  }
+
+  .mobile-filter-badge[hidden] {
+    display: none;
+  }
+
+  /* On garde le tri natif/logique existante mais on lui donne la même
+     hauteur que le bouton Filtres. */
+  .catalogue-section .catalogue-controls > .catalogue-field:last-child {
+    display: block;
+    min-width: 0;
+  }
+
+  .catalogue-section .catalogue-controls > .catalogue-field:last-child .catalogue-field-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .catalogue-section .catalogue-dropdown-toggle {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 11px;
+    font-size: 13px;
+  }
+
+  /* Puces de catégories : uniquement les catégories principales. */
+  .catalogue-mobile-chips {
+    display: flex;
+    grid-column: 1 / -1;
+    gap: 7px;
+    overflow-x: auto;
+    margin: 0;
+    padding: 2px 0 3px;
+    scrollbar-width: none;
+  }
+
+  .catalogue-mobile-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-chip {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 6px;
+    height: 35px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .mobile-chip b {
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .mobile-chip.is-active {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #fff;
+  }
+
+  .mobile-chip.is-active b {
+    color: rgba(255,255,255,.72);
+  }
+
+  /* Feuille mobile */
+  #catalogue-filter-sidebar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 60;
+    width: 100%;
+    max-height: min(82dvh, 720px);
+    overflow-y: auto;
+    padding: 0 16px calc(8px + env(safe-area-inset-bottom));
+    border: 0;
+    border-radius: 20px 20px 0 0;
+    background: var(--white);
+    box-shadow: 0 -18px 50px rgba(23,23,23,.16);
+    transform: translateY(105%);
+    visibility: hidden;
+    transition: transform .28s ease, visibility 0s linear .28s;
+  }
+
+  #catalogue-filter-sidebar.is-open {
+    transform: translateY(0);
+    visibility: visible;
+    transition-delay: 0s;
+  }
+
+  #catalogue-filter-sidebar::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 99px;
+    background: #d8d4cc;
+  }
+
+  .catalogue-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    display: block;
+    background: rgba(23,23,23,.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .22s ease;
+  }
+
+  body.filters-open {
+    overflow: hidden;
+  }
+
+  body.filters-open .catalogue-sheet-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #catalogue-filter-sidebar .catalogue-filter-heading {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    min-height: 58px;
+    margin: 0 -16px 12px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,.97);
+    backdrop-filter: blur(8px);
+  }
+
+  .catalogue-filter-title {
+    font-size: 15px;
+  }
+
+  .catalogue-filter-reset {
+    margin-left: auto;
+    min-height: 38px;
+  }
+
+  .mobile-sheet-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-left: 2px;
+    border: 0;
+    border-radius: 50%;
+    background: #f5f3ef;
+    color: var(--ink);
+    font-size: 16px;
+  }
+
+  #catalogue-filter-sidebar .catalogue-filter-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  #catalogue-filter-sidebar .catalogue-filter-all {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  #catalogue-filter-sidebar .catalogue-filter-option {
+    min-height: 46px;
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  /* Sur mobile, les filtres secondaires sont aussi disposés en colonnes
+     pour éviter une feuille trop longue. */
+  #catalogue-filter-sidebar .catalogue-extra-filter {
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  #catalogue-filter-sidebar .catalogue-availability-filter {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 10px;
+  }
+
+  #catalogue-filter-sidebar .catalogue-availability-filter h4,
+  #catalogue-filter-sidebar .catalogue-price-filter h4,
+  #catalogue-filter-sidebar .catalogue-brand-filter h4 {
+    grid-column: 1 / -1;
+  }
+
+  #catalogue-filter-sidebar .catalogue-price-inputs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #catalogue-filter-sidebar .catalogue-brand-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #catalogue-filter-sidebar .catalogue-brand-more {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-apply-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    display: block;
+    margin: 12px -16px 0;
+    padding: 16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0), var(--white) 24%);
+  }
+
+  .mobile-apply {
+    width: 100%;
+    min-height: 48px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 650;
+  }
+
+  .mobile-apply:hover {
+    background: var(--green);
+  }
+
+  #catalogue-pagination {
+    grid-column: 1 / -1;
+    margin-top: 24px;
+  }
+
+  #catalogue-pagination .pg-label {
+    display: none;
+  }
+
+  #catalogue-pagination button[data-page]:not(.is-active):not([data-nav]),
+  #catalogue-pagination .catalogue-pagination-gap {
+    display: none;
+  }
+
+  #catalogue-pagination button[data-nav] {
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 380px) {
+  .catalogue-section {
+    --catalogue-card-width: 148px;
+  }
+
+  .catalogue-section > #product-grid {
+    gap: 18px 9px;
+  }
+}
+
+@media (max-width: 330px) {
+  .catalogue-section {
+    --catalogue-card-width: 100%;
+  }
+
+  .catalogue-section > #product-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .catalogue-section > #product-grid > .product-card,
+  .catalogue-section > #product-grid > .product-item {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #catalogue-filter-sidebar .catalogue-filter-list,
+  #catalogue-filter-sidebar .catalogue-availability-filter,
+  #catalogue-filter-sidebar .catalogue-brand-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalogue-section *,
+  #catalogue-filter-sidebar,
+  .catalogue-sheet-backdrop {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
+
+/* =========================================================
+   À PROPOS D'E-TOKIANA
+   Design responsive
+========================================================= */
+
+.about-etokiana {
+    width: 100%;
+    padding: 80px 24px;
+    background: #f5f1eb;
+    box-sizing: border-box;
+}
+
+.about-etokiana *,
+.about-etokiana *::before,
+.about-etokiana *::after {
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   CONTENEUR
+========================================================= */
+
+.about-etokiana__container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(420px, .95fr);
+
+    gap: 70px;
+    align-items: center;
+}
+
+
+/* =========================================================
+   INTRODUCTION
+========================================================= */
+
+.about-etokiana__intro {
+    max-width: 620px;
+}
+
+.about-etokiana__eyebrow {
+    display: block;
+
+    margin-bottom: 22px;
+
+    color: #77736d;
+
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+
+    letter-spacing: .20em;
+    text-transform: uppercase;
+}
+
+
+.about-etokiana__title {
+    margin: 0 0 24px;
+
+    color: #171717;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: clamp(40px, 4.5vw, 60px);
+    font-weight: 500;
+
+    line-height: .98;
+    letter-spacing: -.055em;
+}
+
+
+.about-etokiana__title em {
+    display: block;
+
+    margin-top: 5px;
+
+    color: #07843f;
+
+    font-family: Georgia, "Times New Roman", serif;
+
+    font-size: 1.03em;
+    font-weight: 400;
+
+    font-style: italic;
+
+    letter-spacing: -.045em;
+}
+
+
+.about-etokiana__description {
+    max-width: 530px;
+
+    margin: 0;
+
+    color: #706c66;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 14px;
+    line-height: 1.85;
+
+    letter-spacing: .005em;
+}
+
+
+/* =========================================================
+   CARTE
+========================================================= */
+
+.about-etokiana__card {
+    width: 100%;
+
+    padding: 27px 27px 25px;
+
+    background: rgba(255, 253, 249, .96);
+
+    border: 1px solid #dcd5cb;
+    border-radius: 17px;
+
+    box-shadow:
+        0 2px 4px rgba(45, 35, 25, .05),
+        0 8px 22px rgba(45, 35, 25, .06);
+}
+
+
+/* =========================================================
+   TITRE CARTE
+========================================================= */
+
+.about-etokiana__card-label {
+    display: block;
+
+    margin-bottom: 11px;
+
+    color: #89837a;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 9px;
+    font-weight: 500;
+
+    letter-spacing: .19em;
+    text-transform: uppercase;
+}
+
+
+.about-etokiana__name {
+    margin: 0 0 7px;
+
+    color: #181818;
+
+    font-family: Georgia, "Times New Roman", serif;
+
+    font-size: 25px;
+    font-weight: 400;
+
+    line-height: 1.15;
+    letter-spacing: -.025em;
+}
+
+
+.about-etokiana__role {
+    display: block;
+
+    color: #087e3c;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 9px;
+    font-weight: 700;
+
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+
+/* =========================================================
+   INFORMATIONS
+========================================================= */
+
+.about-etokiana__details {
+    display: flex;
+    flex-direction: column;
+
+    gap: 12px;
+
+    margin-top: 24px;
+}
+
+
+.about-etokiana__detail {
+    display: flex;
+    align-items: center;
+
+    gap: 11px;
+
+    min-height: 20px;
+
+    color: #34312e;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+
+.about-etokiana__detail-icon {
+    flex: 0 0 16px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 16px;
+    height: 18px;
+
+    color: #ef5b5b;
+}
+
+
+.about-etokiana__detail-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+
+.about-etokiana__detail a {
+    color: inherit;
+
+    text-decoration: none;
+
+    border-bottom: 1px solid rgba(52, 49, 46, .35);
+
+    transition:
+        color .2s ease,
+        border-color .2s ease;
+}
+
+
+.about-etokiana__detail a:hover {
+    color: #087e3c;
+
+    border-color: #087e3c;
+}
+
+
+/* =========================================================
+   DISPONIBILITÉ
+========================================================= */
+
+.about-etokiana__availability {
+    margin-top: 18px;
+
+    padding: 13px 16px 12px;
+
+    background: #eaf1eb;
+
+    border-radius: 11px;
+}
+
+
+/* En-tête disponibilité */
+
+.about-etokiana__availability-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    margin-bottom: 10px;
+}
+
+
+.about-etokiana__availability-title {
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+}
+
+
+.about-etokiana__clock {
+    display: flex;
+
+    width: 17px;
+    height: 17px;
+
+    color: #ef5b5b;
+}
+
+
+.about-etokiana__clock svg {
+    width: 17px;
+    height: 17px;
+}
+
+
+.about-etokiana__availability-title strong {
+    color: #087e3c;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 9px;
+    font-weight: 700;
+
+    letter-spacing: .05em;
+}
+
+
+.about-etokiana__timezone {
+    color: #817c74;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 8px;
+
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+
+/* Horaires */
+
+.about-etokiana__schedule {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    padding: 1px 0 10px 26px;
+
+    color: #35342f;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 10px;
+}
+
+
+.about-etokiana__schedule strong {
+    color: #272725;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    white-space: nowrap;
+}
+
+
+.about-etokiana__schedule strong b {
+    margin: 0 4px;
+
+    color: #ef5b5b;
+
+    font-weight: 700;
+}
+
+
+/* Fermeture */
+
+.about-etokiana__closed {
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 8px 0 0 26px;
+
+    border-top: 1px solid #ccdacf;
+
+    color: #ef5b5b;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 9px;
+}
+
+
+.about-etokiana__closed-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 11px;
+    height: 11px;
+
+    font-size: 13px;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   GRAND ÉCRAN
+========================================================= */
+
+@media (min-width: 1200px) {
+
+    .about-etokiana {
+        padding-top: 90px;
+        padding-bottom: 90px;
+    }
+
+    .about-etokiana__container {
+        gap: 85px;
+    }
+
+    .about-etokiana__card {
+        padding: 28px;
+    }
+}
+
+
+/* =========================================================
+   TABLETTE
+========================================================= */
+
+@media (max-width: 1000px) {
+
+    .about-etokiana {
+        padding: 65px 24px;
+    }
+
+    .about-etokiana__container {
+        grid-template-columns: minmax(0, 1fr) minmax(360px, .85fr);
+
+        gap: 40px;
+    }
+
+    .about-etokiana__title {
+        font-size: clamp(36px, 5vw, 48px);
+    }
+
+    .about-etokiana__name {
+        font-size: 22px;
+    }
+
+    .about-etokiana__card {
+        padding: 24px;
+    }
+}
+
+
+/* =========================================================
+   PETITE TABLETTE
+========================================================= */
+
+@media (max-width: 800px) {
+
+    .about-etokiana {
+        padding: 60px 22px;
+    }
+
+    .about-etokiana__container {
+        grid-template-columns: 1fr;
+
+        gap: 42px;
+    }
+
+    .about-etokiana__intro {
+        max-width: 700px;
+    }
+
+    .about-etokiana__description {
+        max-width: 620px;
+    }
+
+    .about-etokiana__card {
+        max-width: 620px;
+    }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+    .about-etokiana {
+        padding: 48px 16px;
+    }
+
+    .about-etokiana__container {
+        gap: 35px;
+    }
+
+    .about-etokiana__eyebrow {
+        margin-bottom: 16px;
+
+        font-size: 9px;
+    }
+
+    .about-etokiana__title {
+        margin-bottom: 19px;
+
+        font-size: clamp(34px, 10vw, 43px);
+
+        line-height: 1;
+    }
+
+    .about-etokiana__title em {
+        margin-top: 4px;
+    }
+
+    .about-etokiana__description {
+        font-size: 13px;
+        line-height: 1.75;
+    }
+
+    .about-etokiana__card {
+        padding: 22px 20px;
+
+        border-radius: 15px;
+    }
+
+    .about-etokiana__card-label {
+        font-size: 8px;
+    }
+
+    .about-etokiana__name {
+        font-size: 21px;
+    }
+
+    .about-etokiana__details {
+        gap: 11px;
+
+        margin-top: 21px;
+    }
+
+    .about-etokiana__detail {
+        font-size: 11.5px;
+    }
+
+    .about-etokiana__availability {
+        padding: 13px;
+    }
+
+    .about-etokiana__availability-header {
+        align-items: flex-start;
+    }
+
+    .about-etokiana__timezone {
+        font-size: 7px;
+    }
+}
+
+
+/* =========================================================
+   PETIT MOBILE
+========================================================= */
+
+@media (max-width: 400px) {
+
+    .about-etokiana {
+        padding: 40px 12px;
+    }
+
+    .about-etokiana__title {
+        font-size: 31px;
+    }
+
+    .about-etokiana__description {
+        font-size: 12.5px;
+    }
+
+    .about-etokiana__card {
+        padding: 20px 17px;
+    }
+
+    .about-etokiana__name {
+        font-size: 19px;
+    }
+
+    .about-etokiana__detail {
+        gap: 9px;
+
+        font-size: 10.5px;
+    }
+
+    .about-etokiana__detail-icon {
+        flex-basis: 15px;
+    }
+
+    .about-etokiana__detail-icon svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .about-etokiana__schedule {
+        padding-left: 23px;
+    }
+
+    .about-etokiana__closed {
+        padding-left: 23px;
+    }
+}
+
+
+/* =========================================================
+   TRÈS PETIT MOBILE
+========================================================= */
+
+@media (max-width: 340px) {
+
+    .about-etokiana__title {
+        font-size: 28px;
+    }
+
+    .about-etokiana__name {
+        font-size: 18px;
+    }
+
+    .about-etokiana__detail {
+        font-size: 10px;
+    }
+
+    .about-etokiana__timezone {
+        display: none;
+    }
+
+    .about-etokiana__availability-header {
+        justify-content: flex-start;
+    }
+}
