@@ -1094,6 +1094,11 @@ function etokianaReadFavoritesForUser(user, migrateLegacy = false) {
 let favorites = etokianaReadFavoritesForUser(JSON.parse(localStorage.getItem("etokiana-user") || "null"), true);
 const productGrid = document.querySelector("#product-grid");
 const emptyState = document.querySelector("#empty-state");
+const cataloguePagination = document.querySelector("#catalogue-pagination");
+const catalogueResultsCount = document.querySelector("#catalogue-results-count");
+const cataloguePageSizeSelect = document.querySelector("#catalogue-page-size");
+let cataloguePage = 1;
+let cataloguePageSize = Math.max(1, Number(cataloguePageSizeSelect?.value) || 12);
 const cartDrawer = document.querySelector("#cart-drawer");
 const drawerBackdrop = document.querySelector("#drawer-backdrop");
 const cartItems = document.querySelector("#cart-items");
@@ -1773,8 +1778,29 @@ function openOrderTracking(orderOrId) {
 // Point d'entrée explicite pour les boutons générés dans les espaces utilisateur.
 window.openOrderTracking = openOrderTracking;
 
+function getCataloguePriceBounds() {
+  const minRaw = String(document.querySelector("#catalogue-price-min")?.value ?? "").trim();
+  const maxRaw = String(document.querySelector("#catalogue-price-max")?.value ?? "").trim();
+  const min = minRaw === "" ? null : Number(minRaw);
+  const max = maxRaw === "" ? null : Number(maxRaw);
+  const invalidMin = minRaw !== "" && (!Number.isFinite(min) || min < 0);
+  const invalidMax = maxRaw !== "" && (!Number.isFinite(max) || max < 0);
+  const validMin = min === null || invalidMin ? null : min;
+  const validMax = max === null || invalidMax ? null : max;
+  return { min: validMin, max: validMax, invalid: invalidMin || invalidMax || (validMin !== null && validMax !== null && validMin > validMax) };
+}
+
+function isCatalogueProductAvailable(product) {
+  const stock = productStock(product);
+  const inactive = product?.active === false || String(product?.status || "").toLowerCase() === "inactive";
+  return !inactive && !(stock !== null && stock <= 0);
+}
+
 function filteredProducts() {
+  const priceBounds = getCataloguePriceBounds();
+  const availability = document.querySelector("#catalogue-availability-filter")?.value || "all";
   const filtered = products.filter((product) => {
+    if (priceBounds.invalid) return false;
     const productPath = product.categoryPath || [product.category];
     const isPromotionFilter =
       activeSubcategory.at(-1) === "Nouveautés & Promos";
@@ -1790,28 +1816,124 @@ function filteredProducts() {
       `${product.name} ${productPath.join(" ")} ${product.material} ${productCreatorName(product)}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-    return matchesSubcategory && matchesSearch;
+    const stock = productStock(product);
+    const available = isCatalogueProductAvailable(product);
+    const matchesAvailability = availability === "available"
+      ? available
+      : availability === "unavailable"
+        ? !available
+        : availability === "limited"
+          ? available && stock !== null && stock > 0 && stock <= 5
+          : true;
+    const priceInAriary = Math.max(0, Number(effectivePrice(product)) || 0) * currencyRate;
+    const matchesMinPrice = priceBounds.min === null || priceInAriary >= priceBounds.min;
+    const matchesMaxPrice = priceBounds.max === null || priceInAriary <= priceBounds.max;
+    return matchesSubcategory && matchesSearch && matchesAvailability && matchesMinPrice && matchesMaxPrice;
   });
   const sort = document.querySelector("#sort-select").value;
-  if (sort === "price-low") return filtered.sort((a, b) => a.price - b.price);
-  if (sort === "price-high") return filtered.sort((a, b) => b.price - a.price);
-  return filtered.sort((a, b) => a.id - b.id);
+  // Le tri suit le prix réellement affiché, réduction comprise.
+  if (sort === "price-low") return filtered.sort((a, b) => effectivePrice(a) - effectivePrice(b));
+  if (sort === "price-high") return filtered.sort((a, b) => effectivePrice(b) - effectivePrice(a));
+  return filtered.sort((a, b) => Number(a.id) - Number(b.id));
 }
 
-function productVariantSummary(product) {
-  const colors = productOptionList(product.availableColors || product.colors);
-  const sizes = productOptionList(product.availableSizes || product.sizes);
-  const parts = [];
-  if (colors.length) parts.push(`Couleurs : ${colors.join(", ")}`);
-  if (sizes.length) parts.push(`Tailles : ${sizes.join(", ")}`);
-  return parts.join(" · ");
+function syncMarketplaceShortcuts() {
+  const selectedRoot = activeSubcategory.length ? String(activeSubcategory[0]) : "";
+  document.querySelectorAll("[data-marketplace-root]").forEach((button) => {
+    const root = String(button.dataset.marketplaceRoot || "");
+    const active = root ? selectedRoot === root : !activeSubcategory.length;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
 }
+
+function cataloguePageTokens(currentPage, pageCount) {
+  if (pageCount <= 7) return Array.from({ length: pageCount }, (_, index) => index + 1);
+  const candidates = [...new Set([1, currentPage - 1, currentPage, currentPage + 1, pageCount])]
+    .filter((page) => page >= 1 && page <= pageCount)
+    .sort((a, b) => a - b);
+  const tokens = [];
+  candidates.forEach((page, index) => {
+    if (index && page - candidates[index - 1] > 1) tokens.push("ellipsis");
+    tokens.push(page);
+  });
+  return tokens;
+}
+
+function renderCataloguePagination(totalItems, pageCount) {
+  if (!cataloguePagination) return;
+  if (totalItems <= cataloguePageSize || pageCount <= 1) {
+    cataloguePagination.hidden = true;
+    cataloguePagination.innerHTML = "";
+    return;
+  }
+  const tokenMarkup = cataloguePageTokens(cataloguePage, pageCount).map((token) => {
+    if (token === "ellipsis") return '<span class="marketplace-pagination-ellipsis" aria-hidden="true">…</span>';
+    const active = token === cataloguePage;
+    return `<button type="button" data-catalogue-page="${token}" class="${active ? "is-active" : ""}" ${active ? 'aria-current="page" aria-label="Page actuelle ' + token + '"' : 'aria-label="Aller à la page ' + token + '"'}>${token}</button>`;
+  }).join("");
+  cataloguePagination.hidden = false;
+  cataloguePagination.innerHTML = `
+    <span class="marketplace-pagination-status">Page <strong>${cataloguePage}</strong> sur <strong>${pageCount}</strong></span>
+    <div class="marketplace-pagination-controls">
+      <button type="button" data-catalogue-page="prev" ${cataloguePage <= 1 ? "disabled" : ""} aria-label="Page précédente"><i class="bi bi-chevron-left" aria-hidden="true"></i><span>Précédent</span></button>
+      ${tokenMarkup}
+      <button type="button" data-catalogue-page="next" ${cataloguePage >= pageCount ? "disabled" : ""} aria-label="Page suivante"><span>Suivant</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+    </div>`;
+}
+
+function productCardMaterial(product) {
+  // Les couleurs, tailles, pointures et formats sont des détails de variante :
+  // on les conserve dans la fiche produit, mais on les retire de l'aperçu compact.
+  const material = String(product?.material || "").trim();
+  if (!material) return "";
+  return material
+    .split(/\s*[·|;]\s*/)
+    .map((part) => part.trim())
+    .filter((part) => part && !/\b(couleurs?|coloris|tailles?|pointures?|formats?)\b/i.test(part))
+    .join(" · ");
+}
+
 function renderProducts() {
-  const visibleProducts = filteredProducts();
-  emptyState.hidden = visibleProducts.length > 0;
+  const priceBounds = getCataloguePriceBounds();
+  const allVisibleProducts = filteredProducts();
+  const pageCount = Math.max(1, Math.ceil(allVisibleProducts.length / cataloguePageSize));
+  cataloguePage = Math.min(Math.max(1, cataloguePage), pageCount);
+  const startIndex = (cataloguePage - 1) * cataloguePageSize;
+  const endIndex = Math.min(startIndex + cataloguePageSize, allVisibleProducts.length);
+  const visibleProducts = allVisibleProducts.slice(startIndex, endIndex);
+  emptyState.hidden = allVisibleProducts.length > 0;
+  emptyState.textContent = priceBounds.invalid
+    ? "Le prix minimum doit être inférieur ou égal au prix maximum."
+    : "Aucun article ou service ne correspond à cette recherche. Essayez une autre catégorie ou modifiez vos filtres.";
+  const minInput = document.querySelector("#catalogue-price-min");
+  const maxInput = document.querySelector("#catalogue-price-max");
+  [minInput, maxInput].forEach((input) => {
+    if (!input) return;
+    input.setAttribute("aria-invalid", String(priceBounds.invalid));
+    input.closest(".catalogue-price-input-shell")?.classList.toggle("is-invalid", priceBounds.invalid);
+  });
+  const priceHelp = document.querySelector("#catalogue-price-filter-help");
+  if (priceHelp) {
+    priceHelp.textContent = priceBounds.invalid
+      ? "Corrigez la fourchette : le minimum ne peut pas dépasser le maximum."
+      : "";
+    priceHelp.classList.toggle("is-error", priceBounds.invalid);
+    priceHelp.hidden = !priceBounds.invalid;
+  }
+  if (catalogueResultsCount) {
+    catalogueResultsCount.textContent = priceBounds.invalid
+      ? "Vérifiez la fourchette de prix"
+      : allVisibleProducts.length
+        ? `Résultats ${startIndex + 1}–${endIndex} sur ${allVisibleProducts.length}`
+        : "Aucun résultat dans le catalogue";
+  }
+  renderCataloguePagination(allVisibleProducts.length, pageCount);
+  syncMarketplaceShortcuts();
   productGrid.innerHTML = visibleProducts
-    .map(
-      (product) => `
+    .map((product) => {
+      const cardMaterial = productCardMaterial(product);
+      return `
     <article class="product-card">
       <div class="product-image-wrap">
         ${product.tag ? `<span class="product-tag">${product.tag}</span>` : ""}
@@ -1821,8 +1943,7 @@ function renderProducts() {
         <div class="product-image-caption">
           <span class="product-image-category">${product.category}</span>
           <span class="product-image-subcategory">${(product.categoryPath || [product.category]).slice(1).join(" · ") || "Sélection générale"}</span>
-          <span class="product-image-detail">${product.material}</span>
-          ${productVariantSummary(product) ? `<span class="product-image-variants">${productVariantSummary(product)}</span>` : ""}
+          ${cardMaterial ? `<span class="product-image-detail">${trackingEscape(cardMaterial)}</span>` : ""}
           <h3 class="product-image-name">${product.name}</h3>
           <span class="product-image-reference">Réf. ${window.getProductReference(product)}</span>
           <span class="product-image-publisher">Publié par : <strong>${trackingEscape(productCreatorName(product))}</strong></span>
@@ -1837,8 +1958,8 @@ function renderProducts() {
           </button>
         </div>
       </div>
-    </article>`,
-    )
+    </article>`;
+    })
     .join("");
 }
 
@@ -2845,6 +2966,7 @@ document
   .addEventListener("change", (event) => {
     activeFamilyPath = event.target.value ? JSON.parse(event.target.value) : [];
     activeSubcategory = activeFamilyPath;
+    cataloguePage = 1;
     renderSubcategoryOptions();
     renderProducts();
   });
@@ -2854,19 +2976,60 @@ document
     activeSubcategory = event.target.value
       ? JSON.parse(event.target.value)
       : activeFamilyPath;
+    cataloguePage = 1;
     renderProducts();
   });
-document.querySelector("[data-show-services]").addEventListener("click", () => {
-  const familyFilter = document.querySelector("#category-family-filter");
-  familyFilter.value = "";
-  familyFilter.dispatchEvent(new Event("change", { bubbles: true }));
-  const subcategoryFilter = document.querySelector("#subcategory-filter");
-  subcategoryFilter.value = JSON.stringify(["Services"]);
-  subcategoryFilter.dispatchEvent(new Event("change", { bubbles: true }));
+document.querySelectorAll("[data-show-services]").forEach((serviceLink) => {
+  serviceLink.addEventListener("click", () => {
+    const familyFilter = document.querySelector("#category-family-filter");
+    if (familyFilter) {
+      familyFilter.value = "";
+      familyFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    const subcategoryFilter = document.querySelector("#subcategory-filter");
+    if (subcategoryFilter) {
+      subcategoryFilter.value = JSON.stringify(["Services"]);
+      subcategoryFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
 });
 document
   .querySelector("#sort-select")
-  .addEventListener("change", renderProducts);
+  .addEventListener("change", () => {
+    cataloguePage = 1;
+    renderProducts();
+  });
+
+// Filtres complémentaires : disponibilité réelle et prix final en ariary.
+document.querySelector("#catalogue-availability-filter")?.addEventListener("change", () => {
+  cataloguePage = 1;
+  renderProducts();
+});
+["#catalogue-price-min", "#catalogue-price-max"].forEach((selector) => {
+  document.querySelector(selector)?.addEventListener("input", () => {
+    cataloguePage = 1;
+    renderProducts();
+  });
+});
+document.querySelector("#catalogue-filter-reset")?.addEventListener("click", () => {
+  searchTerm = "";
+  const searchInput = document.querySelector("#search-input");
+  if (searchInput) searchInput.value = "";
+  const availability = document.querySelector("#catalogue-availability-filter");
+  if (availability) availability.value = "all";
+  const minInput = document.querySelector("#catalogue-price-min");
+  const maxInput = document.querySelector("#catalogue-price-max");
+  if (minInput) minInput.value = "";
+  if (maxInput) maxInput.value = "";
+  const family = document.querySelector("#category-family-filter");
+  if (family) { family.value = ""; family.dispatchEvent(new Event("change", { bubbles: true })); }
+  const subcategory = document.querySelector("#subcategory-filter");
+  if (subcategory) { subcategory.value = ""; subcategory.dispatchEvent(new Event("change", { bubbles: true })); }
+  const sort = document.querySelector("#sort-select");
+  if (sort) { sort.value = "featured"; sort.dispatchEvent(new Event("change", { bubbles: true })); }
+  cataloguePage = 1;
+  renderProducts();
+});
 document.querySelector("#search-toggle").addEventListener("click", () => {
   const bar = document.querySelector("#search-bar");
   bar.hidden = !bar.hidden;
@@ -2877,7 +3040,64 @@ document.querySelector("#search-close").addEventListener("click", () => {
 });
 document.querySelector("#search-input").addEventListener("input", (event) => {
   searchTerm = event.target.value;
+  cataloguePage = 1;
   renderProducts();
+});
+
+if (cataloguePageSizeSelect) {
+  cataloguePageSizeSelect.addEventListener("change", () => {
+    const nextSize = Number(cataloguePageSizeSelect.value);
+    cataloguePageSize = [8, 12, 24].includes(nextSize) ? nextSize : 12;
+    cataloguePage = 1;
+    renderProducts();
+  });
+}
+
+if (cataloguePagination) {
+  cataloguePagination.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-catalogue-page]");
+    if (!button || button.disabled) return;
+    const action = button.dataset.cataloguePage;
+    const totalPages = Math.max(1, Math.ceil(filteredProducts().length / cataloguePageSize));
+    if (action === "prev") cataloguePage -= 1;
+    else if (action === "next") cataloguePage += 1;
+    else {
+      const requestedPage = Number(action);
+      if (Number.isFinite(requestedPage)) cataloguePage = requestedPage;
+    }
+    cataloguePage = Math.min(Math.max(1, cataloguePage), totalPages);
+    renderProducts();
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    document.querySelector(".marketplace-results-toolbar")?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "nearest",
+    });
+  });
+}
+
+document.querySelectorAll("[data-marketplace-root]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const requestedRoot = String(button.dataset.marketplaceRoot || "");
+    const familyFilter = document.querySelector("#category-family-filter");
+    const subcategoryFilter = document.querySelector("#subcategory-filter");
+    const searchInput = document.querySelector("#search-input");
+    searchTerm = "";
+    if (searchInput) searchInput.value = "";
+    cataloguePage = 1;
+    if (familyFilter) {
+      familyFilter.value = "";
+      familyFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    if (subcategoryFilter) {
+      subcategoryFilter.value = requestedRoot ? JSON.stringify([requestedRoot]) : "";
+      subcategoryFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    document.querySelectorAll("[data-marketplace-root]").forEach((item) => {
+      const active = item === button;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+  });
 });
 /* E-tokiana — journal multi-thèmes : rubriques libres, carrousels et gestion locale des publications. */
 const ETK_JOURNAL_STORAGE_KEY = "etokiana-journal-articles";
@@ -3000,11 +3220,12 @@ function etkJournalGetCollection(key) {
   return ETK_JOURNAL_COLLECTIONS.find((collection) => collection.key === key) || ETK_JOURNAL_COLLECTIONS[0];
 }
 function etkJournalRenderCollectionOptions() {
-  const select = document.querySelector('#etk-journal-form [name="collection"]');
-  if (!select) return;
-  const current = select.value;
-  select.innerHTML = ETK_JOURNAL_COLLECTIONS.map((collection) => `<option value="${etkJournalEscape(collection.key)}">${etkJournalEscape(collection.title)}</option>`).join("");
-  select.value = ETK_JOURNAL_COLLECTIONS.some((collection) => collection.key === current) ? current : (ETK_JOURNAL_COLLECTIONS[0]?.key || "");
+  const selects = [...document.querySelectorAll('#etk-journal-form [name="collection"], #etk-journal-edit-dialog-form [name="collection"]')];
+  selects.forEach((select) => {
+    const current = select.value;
+    select.innerHTML = ETK_JOURNAL_COLLECTIONS.map((collection) => `<option value="${etkJournalEscape(collection.key)}">${etkJournalEscape(collection.title)}</option>`).join("");
+    select.value = ETK_JOURNAL_COLLECTIONS.some((collection) => collection.key === current) ? current : (ETK_JOURNAL_COLLECTIONS[0]?.key || "");
+  });
 }
 function etkJournalRenderTopicNavigation() {
   const nav = document.querySelector("#journal-topic-nav");
@@ -3094,19 +3315,18 @@ function etkJournalResetCollectionForm() {
   if (reset) reset.hidden = true;
 }
 function etkJournalEditCollection(key) {
+  if (!etkJournalCanManage()) { etkJournalSetStatus("Accès refusé."); return; }
   const collection = etkJournalGetCollection(key);
-  const form = document.querySelector("#etk-journal-collection-form");
+  const form = document.querySelector("#etk-journal-collection-edit-dialog-form");
   if (!collection || !form) return;
   form.elements.namedItem("key").value = collection.key;
   form.elements.namedItem("title").value = collection.title;
   form.elements.namedItem("subtitle").value = collection.subtitle || "";
-  const submit = form.querySelector('[type="submit"]');
-  if (submit) submit.innerHTML = '<i class="bi bi-check2-circle" aria-hidden="true"></i> Enregistrer la rubrique';
-  const reset = document.querySelector("#etk-journal-collection-reset");
-  if (reset) reset.hidden = false;
-  form.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
-  form.elements.namedItem("title").focus({ preventScroll: true });
+  const status = document.querySelector("#etk-journal-collection-dialog-status");
+  if (status) status.textContent = "";
+  etkJournalShowDialog("etk-journal-collection-edit-dialog", 'input[name="title"]');
 }
+
 function etkJournalCollectionKey(title) {
   const base = String(title || "rubrique").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 45) || "rubrique";
   let key = base; let suffix = 2;
@@ -3330,6 +3550,109 @@ ${shareUrl}`;
   else etkJournalSetStatus(`Fenêtre de partage ${platform === "x" ? "X" : platform} ouverte. Vérifiez le message avant de publier.`);
 }
 
+let etkJournalDialogReturnFocus = null;
+function etkJournalShowDialog(dialogId, focusSelector) {
+  const dialog = document.getElementById(dialogId);
+  if (!dialog) return;
+  const opened = document.querySelector(".etk-journal-dialog.is-open");
+  if (opened && opened !== dialog) etkJournalHideDialog(opened.id, false);
+  etkJournalDialogReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  dialog.hidden = false;
+  dialog.classList.add("is-open");
+  dialog.setAttribute("aria-hidden", "false");
+  document.body.classList.add("etk-journal-dialog-open");
+  window.requestAnimationFrame(() => {
+    const target = focusSelector ? dialog.querySelector(focusSelector) : null;
+    (target || dialog.querySelector("button, input, select, textarea"))?.focus({ preventScroll: true });
+  });
+}
+function etkJournalHideDialog(dialogId, restoreFocus = true) {
+  const dialog = document.getElementById(dialogId);
+  if (!dialog) return;
+  dialog.classList.remove("is-open");
+  dialog.hidden = true;
+  dialog.setAttribute("aria-hidden", "true");
+  if (!document.querySelector(".etk-journal-dialog.is-open")) document.body.classList.remove("etk-journal-dialog-open");
+  if (restoreFocus && etkJournalDialogReturnFocus?.isConnected) etkJournalDialogReturnFocus.focus({ preventScroll: true });
+}
+function etkJournalOpenDeleteConfirmation(type, id, label, message) {
+  const dialog = document.querySelector("#etk-journal-confirm-dialog");
+  if (!dialog) return;
+  dialog.dataset.targetType = type;
+  dialog.dataset.targetId = String(id);
+  const title = dialog.querySelector("#etk-journal-confirm-target");
+  const copy = dialog.querySelector("#etk-journal-confirm-message");
+  const status = dialog.querySelector("#etk-journal-confirm-status");
+  if (title) title.textContent = label;
+  if (copy) copy.textContent = message || "Cette action ne peut pas être annulée.";
+  if (status) status.textContent = "";
+  etkJournalShowDialog(dialog.id, "[data-journal-dialog-close]");
+}
+function etkJournalConfirmDelete() {
+  if (!etkJournalCanManage()) {
+    const status = document.querySelector("#etk-journal-confirm-status");
+    if (status) status.textContent = "Accès refusé. Vous ne pouvez pas supprimer cet élément.";
+    return;
+  }
+  const dialog = document.querySelector("#etk-journal-confirm-dialog");
+  if (!dialog) return;
+  const type = dialog.dataset.targetType;
+  const id = dialog.dataset.targetId;
+  const status = document.querySelector("#etk-journal-confirm-status");
+  if (type === "article") {
+    const article = etkJournalArticles.find((item) => String(item.id) === String(id));
+    if (!article) { if (status) status.textContent = "Cet article n’existe plus ou a déjà été supprimé."; return; }
+    const activeId = document.querySelector('#etk-journal-form [name="id"]')?.value;
+    if (etkJournalSaveArticles(etkJournalArticles.filter((item) => String(item.id) !== String(article.id)))) {
+      if (activeId === article.id) etkJournalResetForm();
+      etkJournalHideDialog(dialog.id);
+      etkJournalSetStatus(`L’article « ${article.title} » a été supprimé.`);
+    } else if (status) status.textContent = "La suppression a échoué. Vérifiez l’espace de stockage du navigateur.";
+    return;
+  }
+  if (type === "collection") {
+    if (ETK_JOURNAL_COLLECTIONS.length <= 1) { if (status) status.textContent = "Conservez au moins une rubrique au journal."; return; }
+    const collection = etkJournalGetCollection(id);
+    if (!collection || collection.key !== id) { if (status) status.textContent = "Cette rubrique n’existe plus."; return; }
+    const replacement = ETK_JOURNAL_COLLECTIONS.find((item) => item.key !== collection.key);
+    if (!replacement) { if (status) status.textContent = "Créez une autre rubrique avant cette suppression."; return; }
+    const articleCount = etkJournalArticles.filter((item) => item.collection === collection.key).length;
+    const nextCollections = ETK_JOURNAL_COLLECTIONS.filter((item) => item.key !== collection.key);
+    const nextArticles = etkJournalArticles.map((article) => article.collection === collection.key ? { ...article, collection: replacement.key } : article);
+    try {
+      localStorage.setItem(ETK_JOURNAL_COLLECTIONS_STORAGE_KEY, JSON.stringify(nextCollections));
+      localStorage.setItem(ETK_JOURNAL_STORAGE_KEY, JSON.stringify(nextArticles));
+      ETK_JOURNAL_COLLECTIONS = nextCollections;
+      etkJournalArticles = nextArticles;
+      etkJournalRenderCollectionAdmin();
+      etkJournalRenderPublic();
+      etkJournalRenderAdminList();
+      etkJournalResetCollectionForm();
+      etkJournalHideDialog(dialog.id);
+      etkJournalSetStatus(articleCount ? `Rubrique supprimée. ${articleCount} article(s) ont été conservés dans « ${replacement.title} ».` : `La rubrique « ${collection.title} » a été supprimée.`);
+    } catch (error) {
+      console.error("Suppression de rubrique impossible", error);
+      if (status) status.textContent = "Impossible de supprimer cette rubrique. Vérifiez l’espace disponible dans le navigateur.";
+    }
+  }
+}
+function etkJournalBindDialogControls() {
+  document.addEventListener("click", (event) => {
+    const closeButton = event.target.closest("[data-journal-dialog-close]");
+    if (closeButton) {
+      const dialog = closeButton.closest(".etk-journal-dialog");
+      if (dialog) etkJournalHideDialog(dialog.id);
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      const dialog = document.querySelector(".etk-journal-dialog.is-open");
+      if (dialog) { event.preventDefault(); etkJournalHideDialog(dialog.id); }
+    }
+  });
+  document.querySelector("#etk-journal-confirm-accept")?.addEventListener("click", etkJournalConfirmDelete);
+}
+
 function etkJournalSetStatus(message) {
   const status = document.querySelector("#etk-journal-status");
   if (status) status.textContent = message;
@@ -3351,8 +3674,9 @@ function etkJournalResetForm() {
 function etkJournalEditArticle(id) {
   if (!etkJournalCanManage()) { etkJournalSetStatus("Accès refusé : connectez-vous avec un compte autorisé à gérer les contenus."); return; }
   const article = etkJournalArticles.find((item) => item.id === String(id));
-  const form = document.querySelector("#etk-journal-form");
+  const form = document.querySelector("#etk-journal-edit-dialog-form");
   if (!article || !form) return;
+  etkJournalRenderCollectionOptions();
   form.elements.namedItem("id").value = article.id;
   form.elements.namedItem("title").value = article.title;
   form.elements.namedItem("collection").value = article.collection;
@@ -3361,17 +3685,16 @@ function etkJournalEditArticle(id) {
   form.elements.namedItem("imageAlt").value = article.imageAlt;
   form.elements.namedItem("excerpt").value = article.excerpt;
   form.elements.namedItem("status").value = article.status;
-  const title = document.querySelector("[data-journal-form-title]");
-  if (title) title.textContent = "Modifier l’article";
-  const submit = form.querySelector('[type="submit"]');
-  if (submit) submit.innerHTML = '<i class="bi bi-check2-circle" aria-hidden="true"></i> Enregistrer les modifications';
-  etkJournalSetStatus("Modifiez les champs nécessaires, puis enregistrez les modifications.");
-  form.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  const status = document.querySelector("#etk-journal-edit-dialog-status");
+  if (status) status.textContent = "Les changements ne seront visibles qu’après avoir enregistré.";
+  etkJournalShowDialog("etk-journal-edit-dialog", 'input[name="title"]');
 }
+
 function etkJournalSaveArticles(nextArticles) {
   try {
     localStorage.setItem(ETK_JOURNAL_STORAGE_KEY, JSON.stringify(nextArticles));
     etkJournalArticles = nextArticles;
+    etkJournalRenderCollectionAdmin();
     etkJournalRenderPublic();
     etkJournalRenderAdminList();
     window.dispatchEvent(new CustomEvent("etokiana-journal-changed", { detail: { count: nextArticles.length } }));
@@ -3391,6 +3714,54 @@ function initEtkJournalAdmin() {
   etkJournalResetCollectionForm();
   etkJournalRenderAdminList();
   syncJournalAdminAccess();
+  etkJournalBindDialogControls();
+
+  const articleEditDialogForm = document.querySelector("#etk-journal-edit-dialog-form");
+  articleEditDialogForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!etkJournalCanManage()) { const status = document.querySelector("#etk-journal-edit-dialog-status"); if (status) status.textContent = "Accès refusé."; return; }
+    if (!articleEditDialogForm.reportValidity()) return;
+    const data = new FormData(articleEditDialogForm);
+    const id = String(data.get("id") || "").trim();
+    const previous = etkJournalArticles.find((item) => item.id === id);
+    if (!previous) { const status = document.querySelector("#etk-journal-edit-dialog-status"); if (status) status.textContent = "Cet article n’existe plus. Fermez cette fenêtre et réessayez."; return; }
+    const title = String(data.get("title") || "").trim();
+    const collection = String(data.get("collection") || "");
+    const date = String(data.get("date") || etkJournalToday());
+    const image = String(data.get("image") || "").trim();
+    const imageAlt = String(data.get("imageAlt") || "").trim();
+    const excerpt = String(data.get("excerpt") || "").trim();
+    const statusValue = data.get("status") === "draft" ? "draft" : "published";
+    let parsedImage;
+    try { parsedImage = new URL(image); } catch (_) { const status = document.querySelector("#etk-journal-edit-dialog-status"); if (status) status.textContent = "Veuillez saisir une URL d’image valide commençant par https:// ou http://."; return; }
+    if (!["https:", "http:"].includes(parsedImage.protocol)) { const status = document.querySelector("#etk-journal-edit-dialog-status"); if (status) status.textContent = "L’image doit utiliser une adresse web http:// ou https://."; return; }
+    if (!ETK_JOURNAL_COLLECTIONS.some((item) => item.key === collection)) { const status = document.querySelector("#etk-journal-edit-dialog-status"); if (status) status.textContent = "Sélectionnez une rubrique valide."; return; }
+    if (!title || !excerpt || !imageAlt) return;
+    const updated = { ...previous, title, collection, date, image: parsedImage.href, imageAlt, excerpt, status: statusValue };
+    if (etkJournalSaveArticles(etkJournalArticles.map((item) => item.id === id ? updated : item))) {
+      etkJournalHideDialog("etk-journal-edit-dialog");
+      etkJournalSetStatus(statusValue === "draft" ? `Modifications enregistrées pour « ${title} » ; l’article reste en brouillon.` : `L’article « ${title} » a été mis à jour.`);
+    }
+  });
+
+  const collectionEditDialogForm = document.querySelector("#etk-journal-collection-edit-dialog-form");
+  collectionEditDialogForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!etkJournalCanManage()) { const status = document.querySelector("#etk-journal-collection-dialog-status"); if (status) status.textContent = "Accès refusé."; return; }
+    if (!collectionEditDialogForm.reportValidity()) return;
+    const data = new FormData(collectionEditDialogForm);
+    const key = String(data.get("key") || "").trim();
+    const title = String(data.get("title") || "").trim().slice(0, 60);
+    const subtitle = String(data.get("subtitle") || "").trim().slice(0, 180);
+    const status = document.querySelector("#etk-journal-collection-dialog-status");
+    if (!ETK_JOURNAL_COLLECTIONS.some((item) => item.key === key)) { if (status) status.textContent = "Cette rubrique n’existe plus. Actualisez puis réessayez."; return; }
+    if (ETK_JOURNAL_COLLECTIONS.some((item) => item.title.toLocaleLowerCase("fr-FR") === title.toLocaleLowerCase("fr-FR") && item.key !== key)) { if (status) status.textContent = "Une autre rubrique porte déjà ce nom."; return; }
+    const next = ETK_JOURNAL_COLLECTIONS.map((item) => item.key === key ? { ...item, title, subtitle, kicker: item.kicker || "Rubrique éditoriale" } : item);
+    if (etkJournalPersistCollections(next)) {
+      etkJournalHideDialog("etk-journal-collection-edit-dialog");
+      etkJournalSetStatus(`Rubrique « ${title} » mise à jour.`);
+    }
+  });
 
   const collectionForm = document.querySelector("#etk-journal-collection-form");
   collectionForm?.addEventListener("submit", (event) => {
@@ -3456,24 +3827,12 @@ function initEtkJournalAdmin() {
       const collection = etkJournalGetCollection(collectionDelete.dataset.journalCollectionDelete);
       if (!collection) return;
       const replacement = ETK_JOURNAL_COLLECTIONS.find((item) => item.key !== collection.key);
+      if (!replacement) { etkJournalSetStatus("Créez une autre rubrique avant cette suppression."); return; }
       const articleCount = etkJournalArticles.filter((item) => item.collection === collection.key).length;
       const prompt = articleCount
-        ? `Supprimer la rubrique « ${collection.title} » ? ${articleCount} article(s) associé(s) seront déplacés vers « ${replacement.title} ».`
-        : `Supprimer la rubrique « ${collection.title} » ?`;
-      if (!window.confirm(prompt)) return;
-      const nextCollections = ETK_JOURNAL_COLLECTIONS.filter((item) => item.key !== collection.key);
-      const nextArticles = etkJournalArticles.map((article) => article.collection === collection.key ? { ...article, collection: replacement.key } : article);
-      try {
-        localStorage.setItem(ETK_JOURNAL_COLLECTIONS_STORAGE_KEY, JSON.stringify(nextCollections));
-        localStorage.setItem(ETK_JOURNAL_STORAGE_KEY, JSON.stringify(nextArticles));
-        ETK_JOURNAL_COLLECTIONS = nextCollections;
-        etkJournalArticles = nextArticles;
-        etkJournalRenderCollectionAdmin();
-        etkJournalRenderPublic();
-        etkJournalRenderAdminList();
-        etkJournalResetCollectionForm();
-        etkJournalSetStatus(articleCount ? `Rubrique supprimée. ${articleCount} article(s) ont été conservés dans « ${replacement.title} ».` : "Rubrique supprimée.");
-      } catch (error) { console.error(error); etkJournalSetStatus("Impossible de supprimer la rubrique. Vérifiez l’espace de stockage du navigateur."); }
+        ? `${articleCount} article(s) seront conservés et déplacés vers « ${replacement.title} ».`
+        : "Cette rubrique ne contient aucun article. Cette action ne peut pas être annulée.";
+      etkJournalOpenDeleteConfirmation("collection", collection.key, `Supprimer la rubrique « ${collection.title} » ?`, prompt);
       return;
     }
     const shareToggle = event.target.closest("[data-journal-share-toggle]");
@@ -3501,12 +3860,7 @@ function initEtkJournalAdmin() {
     if (!etkJournalCanManage()) { etkJournalSetStatus("Accès refusé."); return; }
     const article = etkJournalArticles.find((item) => item.id === deleteButton.dataset.journalDelete);
     if (!article) return;
-    if (!window.confirm(`Supprimer l’article « ${article.title} » ? Cette action ne peut pas être annulée.`)) return;
-    if (etkJournalSaveArticles(etkJournalArticles.filter((item) => item.id !== article.id))) {
-      const activeId = document.querySelector('#etk-journal-form [name="id"]')?.value;
-      if (activeId === article.id) etkJournalResetForm();
-      etkJournalSetStatus("Article supprimé.");
-    }
+    etkJournalOpenDeleteConfirmation("article", article.id, `Supprimer l’article « ${article.title} » ?`, "Cette action est définitive. L’article sera retiré de la bibliothèque et de la page publique s’il était publié.");
   });
 
   document.addEventListener("click", (event) => {

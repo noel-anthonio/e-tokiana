@@ -4085,7 +4085,7 @@
       }
     </style>
 
-    <base target="_blank" />
+    <base target="_self" />
   
     <style id="etokiana-product-list-ux-fix">
       /* E-tokiana — catalogue produits : actions toujours visibles */
@@ -6778,7 +6778,1126 @@
   }
 </style>
 
-</head>
+
+<style id="etokiana-journal-action-dialogs-style">
+  body.etk-journal-dialog-open { overflow:hidden; }
+  .etk-journal-dialog[hidden] { display:none !important; }
+  .etk-journal-dialog { position:fixed; inset:0; z-index:380000; display:none; align-items:center; justify-content:center; padding:22px; box-sizing:border-box; }
+  .etk-journal-dialog.is-open { display:flex; }
+  .etk-journal-dialog-backdrop { position:absolute; inset:0; background:rgba(13,24,18,.62); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); animation:etkJournalFadeIn .18s ease both; }
+  .etk-journal-dialog-panel { position:relative; z-index:1; display:flex; flex-direction:column; width:min(100%,760px); max-height:min(90dvh,900px); overflow:hidden; border:1px solid #e7e4d9; border-radius:22px; background:#fffefa; box-shadow:0 30px 100px rgba(12,24,16,.3); animation:etkJournalDialogIn .22s ease both; color:#263a2e; }
+  .etk-journal-dialog-panel.is-confirm { width:min(100%,480px); }
+  .etk-journal-dialog-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:22px 24px 17px; border-bottom:1px solid #ece8df; background:linear-gradient(120deg,#f5f8f1,#fffefa 78%); }
+  .etk-journal-dialog-eyebrow { display:block; margin-bottom:5px; color:#9a7d45; font-size:9px; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }
+  .etk-journal-dialog-head h3 { margin:0; color:#19372a; font:600 clamp(21px,3vw,28px)/1.2 'Playfair Display',Georgia,serif; letter-spacing:-.025em; }
+  .etk-journal-dialog-head p { margin:7px 0 0; color:#71796e; font-size:12px; line-height:1.55; }
+  .etk-journal-dialog-close { flex:0 0 38px; display:grid; place-items:center; width:38px; height:38px; border:1px solid #e4e0d6; border-radius:12px; background:#fff; color:#586257; cursor:pointer; font-size:20px; line-height:1; }
+  .etk-journal-dialog-close:hover { border-color:#b7cfb3; background:#f1f6ee; color:#176b45; }
+  .etk-journal-dialog-body { overflow:auto; padding:22px 24px; }
+  .etk-journal-dialog .journal-admin-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .etk-journal-dialog .journal-admin-form-grid>label { display:flex; flex-direction:column; gap:7px; min-width:0; color:#35443a; font-size:11px; font-weight:800; }
+  .etk-journal-dialog .journal-admin-form-grid>label.journal-admin-wide { grid-column:1/-1; }
+  .etk-journal-dialog .journal-admin-form-grid input,.etk-journal-dialog .journal-admin-form-grid select,.etk-journal-dialog .journal-admin-form-grid textarea,.etk-journal-dialog .journal-admin-collection-form input { width:100%; min-width:0; box-sizing:border-box; border:1px solid #dddcd2; border-radius:10px; padding:11px 12px; background:#fff; color:#263a2e; font:inherit; font-size:12px; outline:none; transition:border-color .18s,box-shadow .18s; }
+  .etk-journal-dialog .journal-admin-form-grid textarea { min-height:110px; resize:vertical; line-height:1.55; }
+  .etk-journal-dialog .journal-admin-form-grid input:focus,.etk-journal-dialog .journal-admin-form-grid select:focus,.etk-journal-dialog .journal-admin-form-grid textarea:focus,.etk-journal-dialog .journal-admin-collection-form input:focus { border-color:#176b45; box-shadow:0 0 0 3px rgba(23,107,69,.1); }
+  .etk-journal-dialog .journal-admin-form-grid small { color:#85867c; font-size:10px; font-weight:500; line-height:1.45; }
+  .etk-journal-dialog-foot { display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; padding:16px 24px 22px; border-top:1px solid #ece8df; background:#fffefa; }
+  .etk-journal-dialog-status { flex:1 1 100%; min-height:16px; margin:0; color:#6f796f; font-size:11px; line-height:1.5; }
+  .etk-journal-dialog-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:42px; padding:0 16px; border:1px solid #deded4; border-radius:11px; background:#fff; color:#293b2f; font-size:12px; font-weight:800; cursor:pointer; transition:transform .18s,background .18s,border-color .18s; }
+  .etk-journal-dialog-button:hover { transform:translateY(-1px); border-color:#b8cdb5; background:#f3f7f0; }
+  .etk-journal-dialog-button.is-primary { border-color:#176b45; background:#176b45; color:#fff; }
+  .etk-journal-dialog-button.is-primary:hover { border-color:#125837; background:#125837; }
+  .etk-journal-dialog-button.is-danger { border-color:#b72e33; background:#b72e33; color:#fff; }
+  .etk-journal-dialog-button.is-danger:hover { border-color:#98262b; background:#98262b; }
+  .etk-journal-dialog-confirm-icon { display:grid; place-items:center; width:46px; height:46px; margin-bottom:14px; border:1px solid #f1d6d5; border-radius:15px; background:#fff2f0; color:#b72e33; font-size:20px; }
+  .etk-journal-dialog-confirm-copy { margin:0; color:#687368; font-size:13px; line-height:1.7; overflow-wrap:anywhere; }
+  .etk-journal-dialog-confirm-title { display:block; margin-bottom:5px; color:#19372a; font-weight:850; }
+  @keyframes etkJournalFadeIn { from{opacity:0} to{opacity:1} }
+  @keyframes etkJournalDialogIn { from{opacity:0;transform:translateY(9px) scale(.99)} to{opacity:1;transform:translateY(0) scale(1)} }
+  @media(max-width:600px) { .etk-journal-dialog { padding:10px; align-items:flex-end; } .etk-journal-dialog-panel { max-height:94dvh; border-radius:20px 20px 12px 12px; } .etk-journal-dialog-head { padding:18px 17px 14px; } .etk-journal-dialog-body { padding:18px 17px; } .etk-journal-dialog-foot { padding:14px 17px 18px; } .etk-journal-dialog .journal-admin-form-grid { grid-template-columns:minmax(0,1fr); } .etk-journal-dialog .journal-admin-form-grid>label.journal-admin-wide { grid-column:auto; } .etk-journal-dialog-foot .etk-journal-dialog-button { flex:1 1 auto; } }
+  @media(prefers-reduced-motion:reduce) { .etk-journal-dialog-backdrop,.etk-journal-dialog-panel { animation:none; } .etk-journal-dialog-button,.etk-journal-dialog-close { transition:none; } }
+</style>
+
+
+<style>
+  /* E-tokiana — Les services : vitrine éditoriale premium, accessible et responsive */
+  #univers.editorial {
+    --svc-ink: #172b21;
+    --svc-green: #167347;
+    --svc-green-deep: #0d5634;
+    --svc-muted: #68736b;
+    --svc-paper: #f7f6f0;
+    --svc-line: rgba(23, 43, 33, .13);
+    display: block;
+    position: relative;
+    isolation: isolate;
+    padding: clamp(3.25rem, 7vw, 7rem) clamp(1rem, 5vw, 4.75rem);
+    background: linear-gradient(180deg, #fbfaf6 0%, #f5f4ed 100%);
+    overflow: hidden;
+  }
+  #univers.editorial::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: -10rem;
+    right: -11rem;
+    width: clamp(18rem, 38vw, 39rem);
+    aspect-ratio: 1;
+    border: 1px solid rgba(22, 115, 71, .08);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2.5rem rgba(22,115,71,.025), 0 0 0 5rem rgba(22,115,71,.02);
+    pointer-events: none;
+  }
+  #univers .service-showcase-shell,
+  #univers .services-directory {
+    width: min(100%, 1320px);
+    margin-inline: auto;
+  }
+  #univers .service-showcase-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.04fr) minmax(0, .96fr);
+    align-items: center;
+    gap: clamp(2.25rem, 6vw, 6.5rem);
+  }
+  #univers .service-visual {
+    position: relative;
+    min-height: clamp(430px, 49vw, 650px);
+    border-radius: 26px 26px 100px 26px;
+    overflow: visible;
+    isolation: isolate;
+    background: #e4e4d8;
+    box-shadow: 0 26px 70px rgba(28, 43, 32, .13);
+  }
+  #univers .service-visual > img {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    object-position: center;
+    border-radius: inherit;
+  }
+  #univers .service-visual-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(12, 30, 20, .28) 0%, transparent 32%, transparent 48%, rgba(12, 30, 20, .78) 100%);
+  }
+  #univers .service-visual-topline {
+    position: absolute;
+    top: 1.25rem;
+    left: 1.25rem;
+    right: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+  }
+  #univers .service-photo-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    min-height: 35px;
+    padding: .55rem .85rem;
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 999px;
+    background: rgba(255,255,255,.16);
+    color: #fff;
+    font-size: .64rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  #univers .service-photo-mark {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 50%;
+    background: rgba(255,255,255,.18);
+    color: #fff;
+    font-size: 1.05rem;
+    backdrop-filter: blur(12px);
+  }
+  #univers .service-visual-caption {
+    position: absolute;
+    bottom: 2rem;
+    left: 1.65rem;
+    right: 1.65rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .85rem;
+    color: #fff;
+  }
+  #univers .service-caption-icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 14px;
+    color: #fff;
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.3);
+    backdrop-filter: blur(12px);
+  }
+  #univers .service-visual-caption p {
+    margin: .05rem 0 .35rem;
+    color: #fff;
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: clamp(1.3rem, 2.1vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: -.025em;
+  }
+  #univers .service-visual-caption div > span {
+    display: block;
+    max-width: 32rem;
+    color: rgba(255,255,255,.82);
+    font-size: .84rem;
+    line-height: 1.65;
+  }
+  #univers .service-floating-note {
+    position: absolute;
+    right: -1.5rem;
+    bottom: 8.5rem;
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    max-width: calc(100% - 1rem);
+    padding: .85rem 1rem;
+    border: 1px solid rgba(255,255,255,.78);
+    border-radius: 16px;
+    background: rgba(255,255,255,.94);
+    color: var(--svc-ink);
+    box-shadow: 0 15px 38px rgba(14, 37, 24, .16);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  #univers .service-floating-icon {
+    display: grid;
+    place-items: center;
+    width: 37px;
+    height: 37px;
+    flex: 0 0 37px;
+    border-radius: 12px;
+    color: var(--svc-green);
+    background: #eaf4ed;
+    font-size: 1.1rem;
+  }
+  #univers .service-floating-note strong,
+  #univers .service-floating-note small { display: block; }
+  #univers .service-floating-note strong { margin-bottom: .12rem; font-size: .82rem; font-weight: 800; }
+  #univers .service-floating-note small { color: var(--svc-muted); font-size: .7rem; }
+  #univers .service-copy { min-width: 0; padding: .5rem 0; }
+  #univers .service-copy .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    margin: 0 0 1.25rem;
+    color: var(--svc-green);
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .15em;
+    line-height: 1.5;
+    text-transform: uppercase;
+  }
+  #univers .service-eyebrow-dot { width: 8px; height: 8px; border-radius: 50%; background: #c59d53; box-shadow: 0 0 0 5px rgba(197,157,83,.13); }
+  #univers .service-copy h2 {
+    max-width: 12ch;
+    margin: 0 0 1.35rem;
+    color: var(--svc-ink);
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: clamp(2.7rem, 5.1vw, 5.15rem);
+    font-weight: 500;
+    letter-spacing: -.06em;
+    line-height: .99;
+  }
+  #univers .service-copy h2 em { color: var(--svc-green); font-weight: 500; }
+  #univers .service-lead {
+    max-width: 36rem;
+    margin: 0;
+    color: var(--svc-muted);
+    font-size: clamp(.98rem, 1.25vw, 1.08rem);
+    line-height: 1.85;
+  }
+  #univers .service-benefit-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .65rem 1.1rem;
+    margin: 1.5rem 0 1.75rem;
+  }
+  #univers .service-benefit-row span {
+    display: inline-flex;
+    align-items: center;
+    gap: .48rem;
+    color: #354d3f;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+  #univers .service-benefit-row i { color: var(--svc-green); font-size: 1rem; }
+  #univers .service-primary-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    min-height: 57px;
+    padding: .5rem .6rem .5rem 1.3rem;
+    border: 1px solid var(--svc-green);
+    border-radius: 999px;
+    background: var(--svc-green);
+    color: #fff;
+    font-size: .88rem;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 9px 22px rgba(22,115,71,.17);
+    transition: transform .22s ease, background .22s ease, box-shadow .22s ease;
+  }
+  #univers .service-primary-cta:hover { transform: translateY(-2px); background: var(--svc-green-deep); color: #fff; box-shadow: 0 14px 28px rgba(22,115,71,.23); }
+  #univers .service-cta-icon { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 50%; background: rgba(255,255,255,.17); font-size: 1.05rem; }
+  #univers .service-microcopy { display: flex; align-items: flex-start; gap: .45rem; margin: .9rem 0 0; color: #7a837b; font-size: .72rem; line-height: 1.6; }
+  #univers .service-microcopy i { margin-top: .1rem; color: #a58b55; }
+  #univers .services-directory { margin-top: clamp(4rem, 8vw, 7.5rem); }
+  #univers .services-directory-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  #univers .service-section-kicker { margin: 0 0 .55rem; color: var(--svc-green); font-size: .66rem; font-weight: 800; letter-spacing: .16em; }
+  #univers .services-directory-heading h3 {
+    margin: 0;
+    color: var(--svc-ink);
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: clamp(1.8rem, 3.4vw, 3.05rem);
+    font-weight: 500;
+    letter-spacing: -.045em;
+    line-height: 1.14;
+  }
+  #univers .services-directory-heading > p { max-width: 24rem; margin: 0 0 .15rem; color: var(--svc-muted); font-size: .85rem; line-height: 1.7; }
+  #univers .service-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+  #univers .service-category-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 250px;
+    padding: 1.25rem 1.2rem 1.15rem;
+    overflow: hidden;
+    border: 1px solid var(--svc-line);
+    border-radius: 18px;
+    background: rgba(255,255,255,.7);
+    color: var(--svc-ink);
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(25,45,32,.025);
+    transition: transform .22s ease, border-color .22s ease, background .22s ease, box-shadow .22s ease;
+  }
+  #univers .service-category-card::after {
+    content: "";
+    position: absolute;
+    right: -2rem;
+    bottom: -3.2rem;
+    width: 7rem;
+    height: 7rem;
+    border-radius: 50%;
+    background: rgba(22,115,71,.045);
+    transition: transform .25s ease;
+  }
+  #univers .service-category-card:hover,
+  #univers .service-category-card:focus-visible {
+    transform: translateY(-5px);
+    border-color: rgba(22,115,71,.45);
+    background: #fff;
+    color: var(--svc-ink);
+    box-shadow: 0 18px 38px rgba(25,45,32,.09);
+    outline: none;
+  }
+  #univers .service-category-card:hover::after { transform: scale(1.25); }
+  #univers .service-category-card:focus-visible { outline: 3px solid rgba(22,115,71,.3); outline-offset: 3px; }
+  #univers .service-category-icon { display: grid; place-items: center; width: 49px; height: 49px; margin-bottom: 1.5rem; border-radius: 15px; color: var(--svc-green); background: #eaf3eb; font-size: 1.3rem; }
+  #univers .service-card-pro .service-category-icon { background: #f4eee2; color: #956d2d; }
+  #univers .service-card-delivery .service-category-icon { background: #e9f0f4; color: #456d83; }
+  #univers .service-card-home .service-category-icon { background: #f5e9e7; color: #a25d52; }
+  #univers .service-card-content { display: flex; flex-direction: column; align-items: flex-start; gap: .48rem; padding-right: .5rem; }
+  #univers .service-card-index { color: #8b958d; font-size: .6rem; font-weight: 800; letter-spacing: .12em; }
+  #univers .service-card-content strong { color: var(--svc-ink); font-size: 1.05rem; font-weight: 800; letter-spacing: -.025em; line-height: 1.3; }
+  #univers .service-card-content > span:last-child { color: var(--svc-muted); font-size: .78rem; line-height: 1.7; }
+  #univers .service-card-arrow { position: absolute; top: 1.25rem; right: 1.15rem; color: #6f7f72; font-size: 1rem; transition: transform .22s ease, color .22s ease; }
+  #univers .service-category-card:hover .service-card-arrow { color: var(--svc-green); transform: translate(2px,-2px); }
+  #univers .services-bottom-note {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.15rem;
+    padding: 1rem 1.2rem;
+    border: 1px solid rgba(22,115,71,.13);
+    border-radius: 16px;
+    background: rgba(235,242,233,.62);
+  }
+  #univers .services-bottom-note-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 13px; color: #8c6b2d; background: #f7efd9; font-size: 1rem; }
+  #univers .services-bottom-note p { flex: 1; margin: 0; color: var(--svc-muted); font-size: .78rem; line-height: 1.65; }
+  #univers .services-bottom-note p strong { color: var(--svc-ink); }
+  #univers .services-bottom-note > a { display: inline-flex; align-items: center; gap: .5rem; flex: 0 0 auto; color: var(--svc-green); font-size: .77rem; font-weight: 800; text-decoration: none; white-space: nowrap; }
+  #univers .services-bottom-note > a:hover { color: var(--svc-green-deep); }
+  @media (max-width: 1050px) {
+    #univers .service-showcase-shell { grid-template-columns: minmax(0, 1fr) minmax(0, .92fr); gap: 2.2rem; }
+    #univers .service-visual { min-height: 480px; }
+    #univers .service-floating-note { right: -.55rem; }
+    #univers .service-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #univers .service-category-card { min-height: 215px; }
+  }
+  @media (max-width: 720px) {
+    #univers.editorial { padding: 3.2rem 1rem 3.5rem; }
+    #univers .service-showcase-shell { grid-template-columns: minmax(0, 1fr); gap: 2.1rem; }
+    #univers .service-visual { min-height: clamp(340px, 105vw, 470px); border-radius: 22px 22px 76px 22px; }
+    #univers .service-visual-topline { top: .8rem; left: .8rem; right: .8rem; }
+    #univers .service-photo-kicker { max-width: calc(100% - 50px); padding: .5rem .65rem; font-size: .57rem; letter-spacing: .08em; }
+    #univers .service-visual-caption { bottom: 1.25rem; left: 1rem; right: 1rem; gap: .65rem; }
+    #univers .service-visual-caption p { font-size: 1.35rem; }
+    #univers .service-visual-caption div > span { font-size: .75rem; }
+    #univers .service-caption-icon { width: 36px; height: 36px; flex-basis: 36px; border-radius: 12px; }
+    #univers .service-floating-note { right: .6rem; bottom: 7rem; padding: .65rem .75rem; }
+    #univers .service-floating-icon { width: 32px; height: 32px; flex-basis: 32px; }
+    #univers .service-copy h2 { font-size: clamp(2.55rem, 12vw, 4rem); }
+    #univers .service-lead { font-size: .96rem; line-height: 1.8; }
+    #univers .services-directory { margin-top: 3.6rem; }
+    #univers .services-directory-heading { display: block; margin-bottom: 1.2rem; }
+    #univers .services-directory-heading > p { margin-top: .8rem; }
+    #univers .service-card-grid { grid-template-columns: minmax(0, 1fr); gap: .7rem; }
+    #univers .service-category-card { display: grid; grid-template-columns: 48px minmax(0, 1fr) 18px; align-items: start; gap: .85rem; min-height: 0; padding: 1rem; border-radius: 15px; }
+    #univers .service-category-icon { width: 45px; height: 45px; margin: 0; border-radius: 13px; }
+    #univers .service-card-content { gap: .35rem; padding-right: 0; }
+    #univers .service-card-content strong { font-size: .98rem; }
+    #univers .service-card-content > span:last-child { font-size: .76rem; }
+    #univers .service-card-arrow { position: static; margin-top: .1rem; }
+    #univers .services-bottom-note { display: grid; grid-template-columns: 40px minmax(0,1fr); align-items: start; gap: .7rem; padding: .9rem; }
+    #univers .services-bottom-note > a { grid-column: 2; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #univers .service-primary-cta, #univers .service-category-card, #univers .service-category-card::after, #univers .service-card-arrow { transition: none !important; }
+  }
+</style>
+
+
+    <style id="etokiana-marketplace-premium-refresh">
+      /* Marketplace publique : direction artistique premium et pagination adaptative */
+      #catalogue.catalogue-section { position:relative; isolation:isolate; }
+      #catalogue > .section-heading { align-items:end; gap:clamp(24px,4vw,58px); margin-bottom:28px; }
+      #catalogue > .section-heading .eyebrow { display:inline-flex; align-items:center; gap:9px; color:#6f765f; font-size:10px; font-weight:850; letter-spacing:.19em; text-transform:uppercase; }
+      #catalogue > .section-heading .eyebrow::before { content:""; width:24px; height:1px; background:#b69b65; }
+      #catalogue > .section-heading h2 { color:#202a23; letter-spacing:-.055em; }
+      #catalogue > .section-heading h2 em { color:#267044; font-family:"Playfair Display",Georgia,serif; font-weight:600; }
+      #catalogue .section-description { max-width:390px; color:#70766d; font-size:14px; line-height:1.85; }
+      #catalogue .marketplace-discovery-strip { display:grid; grid-template-columns:minmax(220px,.8fr) minmax(0,1.5fr); align-items:center; gap:24px; margin:14px 0 27px; padding:20px 22px; border:1px solid #e7e5db; border-radius:20px; background:linear-gradient(115deg,#f8f8f0 0%,#fffdf8 58%,#f7f4eb 100%); box-shadow:0 12px 28px rgba(34,45,34,.035); }
+      #catalogue .marketplace-discovery-copy { min-width:0; }
+      #catalogue .marketplace-discovery-kicker { display:inline-flex; align-items:center; gap:7px; color:#3d7650; font-size:9px; font-weight:850; letter-spacing:.14em; line-height:1.4; }
+      #catalogue .marketplace-discovery-kicker i { font-size:13px; }
+      #catalogue .marketplace-discovery-copy p { margin:7px 0 0; color:#626b61; font-size:12px; line-height:1.65; }
+      #catalogue .marketplace-shortcuts { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; min-width:0; }
+      #catalogue .marketplace-shortcut { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:37px; padding:8px 12px; border:1px solid #e2e4da; border-radius:999px; background:rgba(255,255,255,.78); color:#515d52; font:inherit; font-size:11px; font-weight:750; line-height:1.2; cursor:pointer; box-shadow:0 2px 5px rgba(30,43,31,.025); transition:color .18s ease,background .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease; }
+      #catalogue .marketplace-shortcut i { color:#6b8e6e; font-size:13px; }
+      #catalogue .marketplace-shortcut:hover { transform:translateY(-2px); border-color:#a5bca5; background:#fff; color:#225b36; box-shadow:0 7px 16px rgba(30,63,39,.07); }
+      #catalogue .marketplace-shortcut.is-active,#catalogue .marketplace-shortcut[aria-pressed="true"] { border-color:#2e7045; background:#eaf3e9; color:#245d38; }
+      #catalogue .marketplace-shortcut:focus-visible,#catalogue .marketplace-pagination button:focus-visible,#catalogue #catalogue-page-size:focus-visible { outline:3px solid rgba(46,112,69,.23); outline-offset:3px; }
+      #catalogue .catalogue-toolbar { margin:0 0 22px; padding:19px 20px; border:1px solid #e9e5dc; border-radius:19px; background:#fff; box-shadow:0 8px 24px rgba(35,43,34,.035); }
+      #catalogue .catalogue-controls { gap:16px; }
+      #catalogue .catalogue-field { min-width:0; }
+      #catalogue .catalogue-field-label { display:block; margin:0 0 8px; color:#777d73; font-size:10px; font-weight:800; letter-spacing:.035em; }
+      #catalogue .catalogue-dropdown-toggle { min-height:44px; border:1px solid #e3e1d8; border-radius:12px; background:#fbfaf7; color:#3d473e; box-shadow:none; font-size:12px; }
+      #catalogue .catalogue-dropdown-toggle:hover,#catalogue .catalogue-dropdown.show .catalogue-dropdown-toggle { border-color:#9db89e; background:#fff; }
+      #catalogue .marketplace-results-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; margin:0 0 17px; }
+      #catalogue .marketplace-results-count { margin:0; color:#777d73; font-size:11px; font-weight:650; line-height:1.5; }
+      #catalogue .marketplace-page-size-label { display:inline-flex; align-items:center; justify-content:flex-end; gap:9px; color:#777d73; font-size:11px; font-weight:700; white-space:nowrap; }
+      #catalogue #catalogue-page-size { min-height:36px; max-width:140px; padding:7px 27px 7px 10px; border:1px solid #e3e1d8; border-radius:10px; background-color:#fff; color:#374239; font:inherit; font-size:11px; cursor:pointer; }
+      #catalogue #product-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:stretch; gap:clamp(13px,1.7vw,22px); }
+      #catalogue #product-grid .product-card { min-width:0; height:100%; border:1px solid #ebe8df; border-radius:18px; background:#fff; box-shadow:0 5px 18px rgba(27,39,29,.035); overflow:hidden; transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease; }
+      #catalogue #product-grid .product-card:hover { transform:translateY(-4px); border-color:#d5dfd1; box-shadow:0 15px 32px rgba(27,54,33,.09); }
+      #catalogue #product-grid .product-image-wrap { border-radius:0; }
+      #catalogue #product-grid .product-image { transition:transform .45s cubic-bezier(.2,.65,.25,1); }
+      #catalogue #product-grid .product-card:hover .product-image { transform:scale(1.035); }
+      #catalogue .empty-state { margin-top:18px; padding:38px 24px; border:1px dashed #d8ded4; border-radius:18px; background:#fbfcf8; color:#697469; text-align:center; line-height:1.8; }
+      #catalogue .marketplace-pagination { display:flex; align-items:center; justify-content:space-between; gap:14px; margin:28px 0 0; padding:16px 18px; border:1px solid #e7e5dc; border-radius:18px; background:linear-gradient(110deg,#fff 0%,#fbfaf6 100%); box-shadow:0 8px 23px rgba(34,45,34,.035); }
+      #catalogue .marketplace-pagination[hidden] { display:none!important; }
+      #catalogue .marketplace-pagination-status { flex:0 0 auto; color:#737b71; font-size:11px; font-weight:700; white-space:nowrap; }
+      #catalogue .marketplace-pagination-status strong { color:#244f32; font-weight:850; }
+      #catalogue .marketplace-pagination-controls { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:6px; min-width:0; }
+      #catalogue .marketplace-pagination button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-width:36px; min-height:36px; padding:0 10px; border:1px solid #e4e3da; border-radius:11px; background:#fff; color:#535e53; font:inherit; font-size:11px; font-weight:800; cursor:pointer; transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease; }
+      #catalogue .marketplace-pagination button:hover:not(:disabled):not(.is-active) { transform:translateY(-1px); border-color:#a8bea9; background:#f6faf4; color:#245e39; }
+      #catalogue .marketplace-pagination button.is-active { border-color:#226c40; background:#226c40; color:#fff; box-shadow:0 4px 11px rgba(34,108,64,.19); }
+      #catalogue .marketplace-pagination button:disabled { opacity:.42; cursor:not-allowed; }
+      #catalogue .marketplace-pagination-ellipsis { display:inline-flex; align-items:center; justify-content:center; width:20px; color:#9aa095; font-size:12px; }
+      @media(max-width:1120px) { #catalogue #product-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } #catalogue .marketplace-discovery-strip { grid-template-columns:1fr; gap:15px; } #catalogue .marketplace-shortcuts { justify-content:flex-start; } }
+      @media(max-width:760px) { #catalogue > .section-heading { display:block; } #catalogue .section-description { margin-top:17px; } #catalogue .marketplace-discovery-strip { margin-top:10px; margin-bottom:22px; padding:16px; border-radius:16px; } #catalogue .marketplace-shortcuts { gap:7px; } #catalogue .marketplace-shortcut { min-height:35px; padding:7px 10px; font-size:10px; } #catalogue .catalogue-toolbar { padding:15px; } #catalogue .catalogue-controls { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; } #catalogue #product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; } #catalogue .marketplace-pagination { align-items:stretch; flex-direction:column; padding:13px; } #catalogue .marketplace-pagination-status { text-align:center; } #catalogue .marketplace-pagination-controls { justify-content:center; } #catalogue .marketplace-pagination button[data-catalogue-page="prev"],#catalogue .marketplace-pagination button[data-catalogue-page="next"] { flex:1 1 110px; } }
+      @media(max-width:430px) { #catalogue .marketplace-results-toolbar { align-items:flex-start; } #catalogue .marketplace-page-size-label { gap:5px; font-size:10px; } #catalogue #catalogue-page-size { max-width:100px; padding-right:19px; } #catalogue #product-grid { gap:9px; } #catalogue #product-grid .product-card { border-radius:13px; } #catalogue .marketplace-shortcut { gap:5px; } #catalogue .marketplace-shortcut i { font-size:11px; } #catalogue .marketplace-pagination-controls { gap:5px; } #catalogue .marketplace-pagination button { min-width:32px; min-height:34px; padding:0 8px; } }
+      @media(prefers-reduced-motion:reduce) { #catalogue .marketplace-shortcut,#catalogue #product-grid .product-card,#catalogue #product-grid .product-image,#catalogue .marketplace-pagination button { transition:none!important; } #catalogue #product-grid .product-card:hover { transform:none; } }
+    </style>
+
+
+    <style id="etokiana-marketplace-functional-filters">
+      /* Filtres fonctionnels et barre de résultats : présentation calme, lisible et responsive. */
+      #catalogue .catalogue-advanced-filters { margin-top:18px; padding-top:17px; border-top:1px solid #eeeae2; }
+      #catalogue .catalogue-advanced-filters-head { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:13px; }
+      #catalogue .catalogue-filter-eyebrow { display:block; color:#789078; font-size:9px; font-weight:850; letter-spacing:.14em; line-height:1.4; }
+      #catalogue .catalogue-advanced-filters-head p { margin:4px 0 0; color:#303d32; font-size:13px; font-weight:750; }
+      #catalogue .catalogue-filter-reset { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:32px; padding:6px 10px; border:1px solid #e7e4da; border-radius:9px; background:#fbfaf6; color:#667066; font:inherit; font-size:10px; font-weight:750; cursor:pointer; transition:background .18s ease,border-color .18s ease,color .18s ease; }
+      #catalogue .catalogue-filter-reset:hover { border-color:#b7c8b5; background:#f0f6ed; color:#245d38; }
+      #catalogue .catalogue-advanced-filter-grid { display:grid; grid-template-columns:minmax(210px,1.2fr) repeat(2,minmax(150px,.8fr)); gap:12px; align-items:end; }
+      #catalogue .catalogue-filter-control { display:flex; flex-direction:column; gap:7px; min-width:0; margin:0; }
+      #catalogue .catalogue-filter-select-shell,#catalogue .catalogue-price-input-shell { display:flex; align-items:center; position:relative; min-width:0; min-height:43px; border:1px solid #e4e2d9; border-radius:11px; background:#fbfaf7; color:#425044; transition:border-color .18s ease,box-shadow .18s ease,background .18s ease; }
+      #catalogue .catalogue-filter-select-shell:focus-within,#catalogue .catalogue-price-input-shell:focus-within { border-color:#8eae90; background:#fff; box-shadow:0 0 0 3px rgba(56,113,67,.08); }
+      #catalogue .catalogue-filter-select-shell > i:first-child { flex:0 0 auto; margin-left:12px; color:#739174; font-size:13px; }
+      #catalogue .catalogue-filter-select { width:100%; min-width:0; min-height:41px; padding:8px 28px 8px 9px; border:0; outline:0; appearance:none; background:transparent; color:#3b473c; font:inherit; font-size:11px; font-weight:650; cursor:pointer; }
+      #catalogue .catalogue-filter-chevron { position:absolute; right:11px; color:#798276; font-size:10px; pointer-events:none; }
+      #catalogue .catalogue-price-input-shell { padding:0 11px; gap:8px; }
+      #catalogue .catalogue-filter-number { width:100%; min-width:0; min-height:41px; padding:8px 0; border:0; outline:0; background:transparent; color:#314034; font:inherit; font-size:12px; font-weight:650; }
+      #catalogue .catalogue-filter-number::placeholder { color:#a2a69d; font-size:11px; font-weight:500; }
+      #catalogue .catalogue-price-input-shell > span { flex:0 0 auto; color:#7b8478; font-size:10px; font-weight:800; }
+      #catalogue .catalogue-price-input-shell.is-invalid { border-color:#cf7770; background:#fff9f8; box-shadow:0 0 0 3px rgba(185,69,60,.07); }
+      #catalogue .catalogue-filter-help { min-height:14px; margin:9px 0 0; color:#858a80; font-size:10px; line-height:1.5; }
+      #catalogue .catalogue-filter-help.is-error { color:#a43e36; font-weight:700; }
+      #catalogue .marketplace-results-toolbar { min-height:66px; margin:0 0 17px; padding:12px 15px; border:1px solid #e9e6dd; border-radius:15px; background:linear-gradient(105deg,#fbfcf8 0%,#fff 65%,#faf8f1 100%); box-shadow:0 5px 15px rgba(35,43,34,.025); }
+      #catalogue .marketplace-results-summary { display:flex; align-items:center; min-width:0; gap:11px; }
+      #catalogue .marketplace-results-icon { display:inline-flex; align-items:center; justify-content:center; flex:0 0 34px; width:34px; height:34px; border:1px solid #e0e9dc; border-radius:10px; background:#eef5eb; color:#3b744a; font-size:14px; }
+      #catalogue .marketplace-results-copy { min-width:0; }
+      #catalogue .marketplace-results-count { color:#2f3d31; font-size:12px; font-weight:850; letter-spacing:-.01em; }
+      #catalogue .marketplace-results-context { display:block; margin-top:2px; color:#858b80; font-size:10px; line-height:1.45; }
+      #catalogue .marketplace-page-size-label { min-height:39px; padding:0 0 0 14px; border-left:1px solid #e9e7df; }
+      #catalogue #catalogue-page-size { min-height:37px; }
+      #catalogue .catalogue-filter-reset:focus-visible,#catalogue .catalogue-filter-select:focus-visible,#catalogue .catalogue-filter-number:focus-visible { outline:3px solid rgba(46,112,69,.2); outline-offset:3px; }
+      @media(max-width:760px) {
+        #catalogue .catalogue-advanced-filters { margin-top:15px; padding-top:14px; }
+        #catalogue .catalogue-advanced-filter-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:11px; }
+        #catalogue .catalogue-availability-control { grid-column:1 / -1; }
+        #catalogue .marketplace-results-toolbar { align-items:stretch; }
+        #catalogue .marketplace-results-summary { flex:1 1 auto; }
+        #catalogue .marketplace-page-size-label { flex:0 0 auto; padding-left:10px; }
+      }
+      @media(max-width:430px) {
+        #catalogue .catalogue-advanced-filters-head { align-items:flex-start; }
+        #catalogue .catalogue-filter-reset { padding:6px 8px; font-size:9px; white-space:nowrap; }
+        #catalogue .catalogue-advanced-filter-grid { gap:9px; }
+        #catalogue .catalogue-filter-number { font-size:11px; }
+        #catalogue .marketplace-results-toolbar { gap:8px; padding:10px; }
+        #catalogue .marketplace-results-icon { flex-basis:30px; width:30px; height:30px; }
+        #catalogue .marketplace-results-count { font-size:10px; }
+        #catalogue .marketplace-results-context { font-size:9px; }
+        #catalogue .marketplace-page-size-label { gap:5px; padding-left:8px; font-size:9px; }
+        #catalogue #catalogue-page-size { max-width:92px; min-height:34px; padding:6px 18px 6px 7px; font-size:10px; }
+      }
+      @media(prefers-reduced-motion:reduce) { #catalogue .catalogue-filter-reset,#catalogue .catalogue-filter-select-shell,#catalogue .catalogue-price-input-shell { transition:none!important; } }
+    </style>
+
+    <style id="etokiana-marketplace-variant-card-fix">
+      /* Marketplace publique : les variantes restent dans la fiche « Détails » */
+      #catalogue #product-grid [class*="variant"],
+      #catalogue #product-grid [class*="Variant"],
+      #catalogue #product-grid [data-variant-control],
+      #catalogue #product-grid [data-product-color],
+      #catalogue #product-grid [data-product-size],
+      #catalogue #product-grid [data-select-color],
+      #catalogue #product-grid [data-select-size] {
+        display: none !important;
+      }
+      /* Quelques scripts historiques emploient des noms sans « variant ». */
+      #catalogue #product-grid .product-options,
+      #catalogue #product-grid .product-choices,
+      #catalogue #product-grid .product-colors,
+      #catalogue #product-grid .product-sizes,
+      #catalogue #product-grid .color-options,
+      #catalogue #product-grid .size-options {
+        display: none !important;
+      }
+      /* Prix lisible sur les cartes étroites : aucun chevauchement entre prix et remise. */
+      #catalogue #product-grid .product-image-caption {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+      }
+      #catalogue #product-grid .product-image-name,
+      #catalogue #product-grid .product-image-reference,
+      #catalogue #product-grid .product-image-publisher,
+      #catalogue #product-grid .product-image-detail {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      #catalogue #product-grid .product-image-price {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 5px 8px;
+        min-width: 0;
+        margin: 7px 0 0;
+        line-height: 1.35;
+      }
+      #catalogue #product-grid .product-image-price del {
+        flex: 0 1 auto;
+        font-size: 10px;
+        opacity: .7;
+        white-space: nowrap;
+      }
+      #catalogue #product-grid .product-image-price strong {
+        flex: 0 1 auto;
+        font-size: clamp(12px, 1vw, 15px);
+        font-weight: 850;
+        letter-spacing: -.025em;
+        white-space: nowrap;
+      }
+      #catalogue #product-grid .product-image-discount {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        min-height: 20px;
+        padding: 3px 6px;
+        border: 1px solid rgba(238, 186, 166, .4);
+        border-radius: 6px;
+        background: #fff0e9;
+        color: #a9472a;
+        font-size: 9px;
+        font-weight: 850;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+      /* Le sélecteur premium de variantes n'est affiché que dans la fiche produit. */
+      #product-modal .pd-variant-picker {
+        display: grid;
+        gap: 15px;
+        margin: 16px 0 18px;
+        padding: 16px;
+        border: 1px solid #e4e8dd;
+        border-radius: 18px;
+        background: linear-gradient(145deg, #fffefa 0%, #f5f8f1 100%);
+        box-shadow: 0 8px 22px rgba(34, 58, 37, .045);
+      }
+      #product-modal .pd-option-block {
+        min-width: 0;
+        gap: 10px;
+      }
+      #product-modal .pd-option-heading {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      #product-modal .pd-option-heading strong {
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      #product-modal .pd-option-heading > span {
+        flex: 0 0 auto;
+        max-width: 45%;
+        font-size: 11px;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+      }
+      #product-modal .pd-choice-list {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      #product-modal .pd-choice-button {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+      }
+      #product-modal .pd-choice-list-colors .pd-choice-button {
+        min-width: 40px;
+        padding-inline: 10px;
+      }
+      #product-modal .pd-variant-help {
+        padding-top: 2px;
+        border-top: 1px solid #e9ece4;
+      }
+      @media (max-width: 700px) {
+        #product-modal .pd-variant-picker {
+          gap: 13px;
+          padding: 13px;
+          border-radius: 15px;
+        }
+        #product-modal .pd-option-heading {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 4px;
+        }
+        #product-modal .pd-option-heading > span {
+          max-width: 100%;
+          text-align: left;
+        }
+        #product-modal .pd-choice-list {
+          gap: 7px;
+        }
+        #product-modal .pd-choice-button {
+          min-width: 38px;
+          min-height: 38px;
+          padding: 7px 10px;
+        }
+        #catalogue #product-grid .product-image-price {
+          gap: 4px 6px;
+        }
+        #catalogue #product-grid .product-image-price del {
+          font-size: 9px;
+        }
+        #catalogue #product-grid .product-image-price strong {
+          font-size: 12px;
+        }
+      }
+    </style>
+
+
+    <style id="etokiana-marketplace-layout-correction">
+      /* Ajustement de mise en page : filtres et barre de résultats alignés à toutes les largeurs. */
+      #catalogue .catalogue-advanced-filters {
+        margin-top: 18px;
+        padding: 18px;
+        border: 1px solid #e9e7dd;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #fdfdf9 0%, #f8faf5 100%);
+      }
+      #catalogue .catalogue-advanced-filters-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 15px;
+      }
+      #catalogue .catalogue-advanced-filters-head > div { min-width: 0; }
+      #catalogue .catalogue-advanced-filters-head p { margin: 4px 0 0; font-size: 14px; }
+      #catalogue .catalogue-advanced-filter-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) repeat(2, minmax(0, .9fr));
+        gap: 13px;
+        align-items: end;
+      }
+      #catalogue .catalogue-filter-control { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+      #catalogue .catalogue-filter-control .catalogue-field-label { margin: 0; }
+      #catalogue .catalogue-filter-select-shell,
+      #catalogue .catalogue-price-input-shell { width: 100%; box-sizing: border-box; }
+      #catalogue .catalogue-filter-select { width: 100%; }
+      #catalogue .catalogue-filter-number { width: 100%; }
+      #catalogue .catalogue-filter-help { margin: 11px 0 0; line-height: 1.55; }
+
+      #catalogue .marketplace-results-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        min-width: 0;
+        margin: 0 0 18px;
+        padding: 14px 17px;
+        box-sizing: border-box;
+      }
+      #catalogue .marketplace-results-summary { min-width: 0; flex: 1 1 auto; }
+      #catalogue .marketplace-results-copy { min-width: 0; }
+      #catalogue .marketplace-results-count { margin: 0; overflow-wrap: anywhere; }
+      #catalogue .marketplace-results-context { overflow-wrap: anywhere; }
+      #catalogue .marketplace-page-size-label {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        flex: 0 0 auto;
+        min-width: 0;
+        white-space: nowrap;
+      }
+      #catalogue #catalogue-page-size { width: auto; min-width: 112px; max-width: 155px; }
+
+      @media (max-width: 900px) {
+        #catalogue .catalogue-advanced-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        #catalogue .catalogue-availability-control { grid-column: 1 / -1; }
+      }
+      @media (max-width: 580px) {
+        #catalogue .catalogue-advanced-filters { margin-top: 14px; padding: 14px; border-radius: 14px; }
+        #catalogue .catalogue-advanced-filters-head { align-items: flex-start; gap: 10px; }
+        #catalogue .catalogue-advanced-filters-head p { font-size: 13px; }
+        #catalogue .catalogue-filter-reset { flex-shrink: 0; min-height: 34px; }
+        #catalogue .catalogue-advanced-filter-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+        #catalogue .catalogue-availability-control { grid-column: auto; }
+        #catalogue .catalogue-filter-select-shell,
+        #catalogue .catalogue-price-input-shell { min-height: 45px; }
+        #catalogue .catalogue-filter-select,
+        #catalogue .catalogue-filter-number { min-height: 43px; font-size: 12px; }
+        #catalogue .catalogue-filter-help { font-size: 10px; }
+        #catalogue .marketplace-results-toolbar {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 10px;
+          margin-bottom: 14px;
+          padding: 13px;
+          border-radius: 13px;
+        }
+        #catalogue .marketplace-results-summary { flex: 1 1 auto; }
+        #catalogue .marketplace-results-icon { flex-basis: 32px; width: 32px; height: 32px; }
+        #catalogue .marketplace-results-count { font-size: 11px; }
+        #catalogue .marketplace-results-context { font-size: 10px; }
+        #catalogue .marketplace-page-size-label {
+          display: flex;
+          justify-content: space-between;
+          width: 100%;
+          box-sizing: border-box;
+          min-height: 42px;
+          padding: 10px 0 0;
+          border-left: 0;
+          border-top: 1px solid #e9e7df;
+          font-size: 11px;
+        }
+        #catalogue #catalogue-page-size { flex: 0 0 auto; width: 142px; max-width: 55%; min-width: 0; min-height: 36px; padding: 6px 25px 6px 10px; font-size: 11px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #catalogue .catalogue-advanced-filters,
+        #catalogue .marketplace-results-toolbar { scroll-behavior: auto; }
+      }
+    </style>
+
+
+    <style id="etokiana-marketplace-clean-filters">
+      /* Filtres compacts mais plus spacieux : suppression des titres redondants et du texte d'aide permanent. */
+      #catalogue .catalogue-advanced-filters {
+        position: relative;
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 14px;
+        padding: 18px 20px;
+        border: 1px solid #e6e8de;
+        border-radius: 17px;
+        background: linear-gradient(115deg, #fbfcf8 0%, #fff 58%, #f8faf5 100%);
+        box-shadow: 0 7px 22px rgba(33, 48, 34, .035);
+      }
+      #catalogue .catalogue-advanced-filters-head { display: none !important; }
+      #catalogue .catalogue-advanced-filter-grid {
+        display: grid;
+        grid-template-columns: minmax(250px, 1.45fr) minmax(175px, .85fr) minmax(175px, .85fr) 46px;
+        gap: 16px;
+        align-items: end;
+        width: 100%;
+      }
+      #catalogue .catalogue-filter-control { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; }
+      #catalogue .catalogue-filter-control .catalogue-field-label { margin: 0; color: #647064; font-size: 11px; font-weight: 750; letter-spacing: .01em; }
+      #catalogue .catalogue-filter-select-shell,
+      #catalogue .catalogue-price-input-shell { display: flex; position: relative; align-items: center; box-sizing: border-box; width: 100%; min-width: 0; min-height: 49px; border: 1px solid #e1e5da; border-radius: 12px; background: #fff; color: #38483b; transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+      #catalogue .catalogue-filter-select-shell:focus-within,
+      #catalogue .catalogue-price-input-shell:focus-within { border-color: #8eae91; background: #fff; box-shadow: 0 0 0 3px rgba(56,113,67,.09); }
+      #catalogue .catalogue-filter-select-shell > i:first-child { flex: 0 0 auto; margin-left: 14px; color: #6f9272; font-size: 14px; }
+      #catalogue .catalogue-filter-select { display: block; width: 100%; min-width: 0; min-height: 47px; padding: 10px 30px 10px 10px; border: 0; outline: 0; appearance: none; background: transparent; color: #344438; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+      #catalogue .catalogue-filter-chevron { position: absolute; right: 12px; color: #7d887a; font-size: 10px; pointer-events: none; }
+      #catalogue .catalogue-price-input-shell { gap: 10px; padding: 0 14px; }
+      #catalogue .catalogue-filter-number { width: 100%; min-width: 0; min-height: 47px; padding: 10px 0; border: 0; outline: 0; background: transparent; color: #2e3d31; font: inherit; font-size: 13px; font-weight: 650; }
+      #catalogue .catalogue-filter-number::placeholder { color: #9aa298; font-size: 11px; font-weight: 500; }
+      #catalogue .catalogue-price-input-shell > span { flex: 0 0 auto; color: #667664; font-size: 11px; font-weight: 800; }
+      #catalogue .catalogue-price-input-shell.is-invalid { border-color: #cf7770; background: #fff9f8; box-shadow: 0 0 0 3px rgba(185,69,60,.07); }
+      #catalogue .catalogue-filter-reset {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        align-self: end;
+        width: 49px;
+        min-width: 49px;
+        height: 49px;
+        padding: 0;
+        border: 1px solid #e0e5da;
+        border-radius: 12px;
+        background: #f6f8f2;
+        color: #647563;
+        font: inherit;
+        font-size: 15px;
+        cursor: pointer;
+        transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+      }
+      #catalogue .catalogue-filter-reset:hover { transform: translateY(-1px); border-color: #b5c8b3; background: #edf5e9; color: #245d38; }
+      #catalogue .catalogue-filter-reset:focus-visible,
+      #catalogue .catalogue-filter-select:focus-visible,
+      #catalogue .catalogue-filter-number:focus-visible { outline: 3px solid rgba(46,112,69,.2); outline-offset: 3px; }
+      #catalogue .catalogue-filter-help { margin: 10px 0 0; color: #a43e36; font-size: 11px; line-height: 1.5; }
+      #catalogue .catalogue-filter-help[hidden] { display: none !important; }
+      #catalogue .catalogue-filter-help.is-error { color: #a43e36; font-weight: 700; }
+
+      #catalogue .marketplace-results-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 22px;
+        width: 100%;
+        min-width: 0;
+        min-height: 68px;
+        box-sizing: border-box;
+        margin: 0 0 20px;
+        padding: 14px 20px;
+        border: 1px solid #e6e8df;
+        border-radius: 15px;
+        background: #fff;
+        box-shadow: 0 5px 16px rgba(35,43,34,.025);
+      }
+      #catalogue .marketplace-results-summary { display: flex; align-items: center; flex: 1 1 auto; min-width: 0; gap: 12px; }
+      #catalogue .marketplace-results-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid #e0e9dc; border-radius: 11px; background: #eef5eb; color: #3b744a; font-size: 15px; }
+      #catalogue .marketplace-results-copy { min-width: 0; }
+      #catalogue .marketplace-results-count { margin: 0; color: #2f3d31; font-size: 13px; font-weight: 850; line-height: 1.45; letter-spacing: -.01em; }
+      #catalogue .marketplace-results-context { display: none !important; }
+      #catalogue .marketplace-page-size-label { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 0 0 auto; min-height: 42px; padding: 0 0 0 20px; border: 0; border-left: 1px solid #e7e9e2; color: #677265; font-size: 12px; font-weight: 750; white-space: nowrap; }
+      #catalogue #catalogue-page-size { width: 145px; min-width: 125px; max-width: 160px; min-height: 40px; padding: 8px 30px 8px 12px; border: 1px solid #e0e4da; border-radius: 11px; background-color: #fbfcf9; color: #374239; font: inherit; font-size: 12px; cursor: pointer; }
+      @media (max-width: 1080px) {
+        #catalogue .catalogue-advanced-filter-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, .9fr) minmax(0, .9fr) 44px; gap: 12px; }
+        #catalogue .catalogue-advanced-filters { padding: 16px; }
+      }
+      @media (max-width: 900px) {
+        #catalogue .catalogue-advanced-filter-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+        #catalogue .catalogue-availability-control { grid-column: 1 / -1; }
+        #catalogue .catalogue-filter-reset { grid-column: 1 / -1; justify-self: end; width: 42px; min-width: 42px; height: 38px; min-height: 38px; }
+        #catalogue .catalogue-advanced-filters { padding: 16px; }
+      }
+      @media (max-width: 580px) {
+        #catalogue .catalogue-advanced-filter-grid { grid-template-columns: minmax(0,1fr); gap: 12px; }
+        #catalogue .catalogue-availability-control { grid-column: auto; }
+        #catalogue .catalogue-filter-select-shell, #catalogue .catalogue-price-input-shell { min-height: 48px; }
+        #catalogue .catalogue-filter-select, #catalogue .catalogue-filter-number { min-height: 46px; }
+        #catalogue .catalogue-filter-reset { grid-column: auto; justify-self: end; width: 42px; min-width: 42px; height: 38px; min-height: 38px; }
+        #catalogue .marketplace-results-toolbar { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; min-height: 62px; padding: 12px; }
+        #catalogue .marketplace-results-summary { flex: 1 1 auto; gap: 8px; }
+        #catalogue .marketplace-results-icon { flex-basis: 30px; width: 30px; height: 30px; border-radius: 9px; font-size: 12px; }
+        #catalogue .marketplace-results-count { font-size: 11px; }
+        #catalogue .marketplace-page-size-label { gap: 6px; padding-left: 11px; font-size: 10px; }
+        #catalogue #catalogue-page-size { width: 106px; min-width: 0; max-width: 106px; min-height: 36px; padding: 6px 22px 6px 8px; font-size: 10px; }
+      }
+      @media (max-width: 380px) {
+        #catalogue .marketplace-results-toolbar { flex-wrap: wrap; gap: 9px; }
+        #catalogue .marketplace-results-summary { flex-basis: 100%; }
+        #catalogue .marketplace-page-size-label { width: 100%; justify-content: space-between; padding: 8px 0 0; border-left: 0; border-top: 1px solid #e7e9e2; }
+        #catalogue #catalogue-page-size { width: 142px; max-width: 58%; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #catalogue .catalogue-filter-reset, #catalogue .catalogue-filter-select-shell, #catalogue .catalogue-price-input-shell { transition: none !important; }
+      }
+    </style>
+  
+
+    <style id="etokiana-marketplace-discovery-results-final">
+      /* Marketplace: résultats accolés au titre de découverte et filtres épurés. */
+      #catalogue .marketplace-discovery-strip {
+        display:flex; flex-direction:column; align-items:stretch; gap:18px;
+        grid-template-columns:none; margin:14px 0 27px;
+      }
+      #catalogue .marketplace-discovery-topline {
+        display:flex; align-items:center; justify-content:space-between; gap:24px;
+        width:100%; min-width:0;
+      }
+      #catalogue .marketplace-discovery-copy { flex:1 1 auto; min-width:0; }
+      #catalogue .marketplace-discovery-copy p { max-width:410px; }
+      #catalogue .marketplace-shortcuts { justify-content:flex-start; width:100%; }
+      #catalogue .marketplace-results-toolbar-inline {
+        display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; justify-content:flex-end; gap:16px;
+        flex:0 0 auto; width:auto; min-width:0; min-height:0; margin:0; padding:0;
+        border:0; border-radius:0; background:transparent; box-shadow:none;
+      }
+      #catalogue .marketplace-results-toolbar-inline .marketplace-results-summary { flex:0 1 auto; gap:8px; }
+      #catalogue .marketplace-results-toolbar-inline .marketplace-results-icon {
+        flex-basis:30px; width:30px; height:30px; border-radius:9px; font-size:12px;
+      }
+      #catalogue .marketplace-results-toolbar-inline .marketplace-results-count { white-space:nowrap; font-size:12px; }
+      #catalogue .marketplace-results-toolbar-inline .marketplace-page-size-label {
+        min-height:36px; gap:8px; padding-left:14px; border-left:1px solid #e4e7dd;
+        font-size:11px;
+      }
+      #catalogue .marketplace-results-toolbar-inline #catalogue-page-size {
+        width:125px; min-width:110px; max-width:135px; min-height:36px; padding:7px 25px 7px 9px;
+        border:1px solid #e0e4da; border-radius:10px; background:#fff; font-size:11px;
+      }
+      /* Le filtre disponibilité est volontairement retiré de la zone de tri. */
+      #catalogue .catalogue-advanced-filters { margin-top:14px; }
+      #catalogue .catalogue-advanced-filter-grid {
+        grid-template-columns:minmax(0,1fr) minmax(0,1fr) 46px;
+        gap:16px; align-items:end;
+      }
+      #catalogue .catalogue-advanced-filter-grid .catalogue-availability-control { display:none !important; }
+      @media (max-width:900px) {
+        #catalogue .marketplace-discovery-topline { flex-wrap:wrap; align-items:flex-start; gap:14px; }
+        #catalogue .marketplace-discovery-copy { flex:1 1 100%; }
+        #catalogue .marketplace-results-toolbar-inline { flex-direction:row; flex-wrap:nowrap; justify-content:space-between; flex:1 1 100%; width:100%; }
+        #catalogue .catalogue-advanced-filter-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px; gap:12px; }
+      }
+      @media (max-width:580px) {
+        #catalogue .marketplace-discovery-strip { gap:14px; padding:15px; }
+        #catalogue .marketplace-discovery-topline { gap:13px; }
+        #catalogue .marketplace-results-toolbar-inline { flex-direction:row; flex-wrap:nowrap; gap:9px; padding-top:11px; border-top:1px solid #e6e8df; }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-results-summary { gap:7px; }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-results-icon { display:none; }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-results-count { font-size:11px; }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-page-size-label { gap:5px; padding-left:9px; font-size:10px; }
+        #catalogue .marketplace-results-toolbar-inline #catalogue-page-size { width:104px; min-width:0; max-width:104px; min-height:35px; padding:6px 18px 6px 7px; font-size:10px; }
+        #catalogue .catalogue-advanced-filters { padding:14px; }
+        #catalogue .catalogue-advanced-filter-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px; gap:9px; }
+        #catalogue .catalogue-filter-control .catalogue-field-label { font-size:10px; }
+        #catalogue .catalogue-price-input-shell { gap:5px; padding:0 8px; min-height:45px; }
+        #catalogue .catalogue-filter-number { min-height:43px; font-size:11px; }
+        #catalogue .catalogue-price-input-shell > span { font-size:9px; }
+        #catalogue .catalogue-filter-reset { width:40px; min-width:40px; height:40px; min-height:40px; }
+      }
+      @media (max-width:360px) {
+        #catalogue .marketplace-results-toolbar-inline .marketplace-results-count { white-space:normal; max-width:125px; }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-page-size-label { gap:4px; }
+        #catalogue .marketplace-results-toolbar-inline #catalogue-page-size { width:91px; max-width:91px; }
+        #catalogue .catalogue-advanced-filter-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 36px; gap:7px; }
+        #catalogue .catalogue-filter-reset { width:36px; min-width:36px; height:38px; min-height:38px; }
+      }
+    </style>
+
+
+    <style id="etokiana-marketplace-results-below-shortcuts">
+      /* La barre des résultats est placée juste sous les raccourcis de catégories. */
+      #catalogue .marketplace-discovery-strip {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+      }
+      #catalogue .marketplace-discovery-topline {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-start;
+        width: 100%;
+        min-width: 0;
+      }
+      #catalogue .marketplace-discovery-copy { flex: 1 1 auto; width: 100%; min-width: 0; }
+      #catalogue .marketplace-discovery-copy p { max-width: 680px; }
+      #catalogue .marketplace-shortcuts {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 8px;
+      }
+      #catalogue .marketplace-results-toolbar-inline {
+        display: flex;
+        flex: 0 0 auto;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        margin: 2px 0 0;
+        padding: 11px 14px;
+        border: 1px solid #e6e9df;
+        border-radius: 13px;
+        background: linear-gradient(105deg, rgba(255,255,255,.92), rgba(250,251,246,.96));
+        box-shadow: 0 3px 10px rgba(35,43,34,.025);
+      }
+      #catalogue .marketplace-results-toolbar-inline .marketplace-results-summary {
+        display: flex;
+        flex: 1 1 auto;
+        align-items: center;
+        min-width: 0;
+        gap: 9px;
+      }
+      #catalogue .marketplace-results-toolbar-inline .marketplace-results-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 30px;
+        width: 30px;
+        height: 30px;
+        border: 1px solid #e0e9dc;
+        border-radius: 9px;
+        background: #eef5eb;
+        color: #3b744a;
+        font-size: 12px;
+      }
+      #catalogue .marketplace-results-toolbar-inline .marketplace-results-copy { min-width: 0; }
+      #catalogue .marketplace-results-toolbar-inline .marketplace-results-count {
+        margin: 0;
+        color: #2f3d31;
+        font-size: 12px;
+        font-weight: 850;
+        line-height: 1.45;
+        letter-spacing: -.01em;
+        white-space: nowrap;
+      }
+      #catalogue .marketplace-results-toolbar-inline .marketplace-page-size-label {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        min-width: 0;
+        min-height: 36px;
+        padding-left: 14px;
+        border-left: 1px solid #e4e7dd;
+        color: #677265;
+        font-size: 11px;
+        font-weight: 750;
+        white-space: nowrap;
+      }
+      #catalogue .marketplace-results-toolbar-inline #catalogue-page-size {
+        width: 125px;
+        min-width: 110px;
+        max-width: 135px;
+        min-height: 36px;
+        box-sizing: border-box;
+        padding: 7px 24px 7px 9px;
+        border: 1px solid #e0e4da;
+        border-radius: 10px;
+        background: #fff;
+        color: #374239;
+        font: inherit;
+        font-size: 11px;
+      }
+      @media (max-width: 900px) {
+        #catalogue .marketplace-discovery-strip { gap: 14px; }
+        #catalogue .marketplace-discovery-topline { flex-wrap: nowrap; }
+        #catalogue .marketplace-results-toolbar-inline { gap: 12px; }
+      }
+      @media (max-width: 580px) {
+        #catalogue .marketplace-discovery-strip { gap: 12px; }
+        #catalogue .marketplace-shortcuts { gap: 7px; }
+        #catalogue .marketplace-shortcut { min-height: 35px; padding: 7px 10px; font-size: 10px; }
+        #catalogue .marketplace-results-toolbar-inline {
+          gap: 8px;
+          padding: 10px 11px;
+          border-radius: 11px;
+        }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-results-summary { gap: 7px; }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-results-icon { display: none; }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-results-count {
+          font-size: 11px;
+          white-space: normal;
+          overflow-wrap: normal;
+        }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-page-size-label {
+          gap: 5px;
+          padding-left: 9px;
+          font-size: 10px;
+        }
+        #catalogue .marketplace-results-toolbar-inline #catalogue-page-size {
+          width: 104px;
+          min-width: 0;
+          max-width: 104px;
+          min-height: 35px;
+          padding: 6px 18px 6px 7px;
+          font-size: 10px;
+        }
+      }
+      @media (max-width: 370px) {
+        #catalogue .marketplace-results-toolbar-inline { gap: 6px; padding: 9px 8px; }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-results-count { max-width: 125px; font-size: 10px; }
+        #catalogue .marketplace-results-toolbar-inline .marketplace-page-size-label { gap: 4px; padding-left: 7px; }
+        #catalogue .marketplace-results-toolbar-inline #catalogue-page-size { width: 88px; max-width: 88px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #catalogue .marketplace-results-toolbar-inline { scroll-behavior: auto; }
+      }
+    </style>
+
+  </head>
 
   <body>
     <!-- =========================================================
@@ -7172,6 +8291,42 @@
           </p>
         </div>
 
+        <!-- Repères de découverte : accès rapide aux principaux univers -->
+        <div class="marketplace-discovery-strip">
+          <div class="marketplace-discovery-topline">
+            <div class="marketplace-discovery-copy">
+              <span class="marketplace-discovery-kicker"><i class="bi bi-stars" aria-hidden="true"></i> VOTRE ESPACE DE DÉCOUVERTE</span>
+              <p>Explorez les univers, affinez votre recherche et trouvez ce qui vous correspond.</p>
+            </div>
+          </div>
+          <div class="marketplace-shortcuts" role="group" aria-label="Accès rapide aux univers du catalogue">
+            <button type="button" class="marketplace-shortcut is-active" data-marketplace-root="" aria-pressed="true"><i class="bi bi-grid" aria-hidden="true"></i> Tout explorer</button>
+            <button type="button" class="marketplace-shortcut" data-marketplace-root="Prêt-à-porter / Mode" aria-pressed="false"><i class="bi bi-bag" aria-hidden="true"></i> Mode</button>
+            <button type="button" class="marketplace-shortcut" data-marketplace-root="Maison & Décoration" aria-pressed="false"><i class="bi bi-house-heart" aria-hidden="true"></i> Maison</button>
+            <button type="button" class="marketplace-shortcut" data-marketplace-root="Électronique / High-Tech" aria-pressed="false"><i class="bi bi-cpu" aria-hidden="true"></i> High-tech</button>
+            <button type="button" class="marketplace-shortcut" data-marketplace-root="Épicerie fine / Alimentaire" aria-pressed="false"><i class="bi bi-basket2" aria-hidden="true"></i> Épicerie fine</button>
+            <button type="button" class="marketplace-shortcut" data-marketplace-root="Beauté" aria-pressed="false"><i class="bi bi-droplet-half" aria-hidden="true"></i> Beauté</button>
+            <button type="button" class="marketplace-shortcut" data-marketplace-root="Loisirs" aria-pressed="false"><i class="bi bi-controller" aria-hidden="true"></i> Loisirs</button>
+            <button type="button" class="marketplace-shortcut" data-marketplace-root="Services" aria-pressed="false"><i class="bi bi-stars" aria-hidden="true"></i> Services</button>
+          </div>
+          <div class="marketplace-results-toolbar marketplace-results-toolbar-inline">
+            <div class="marketplace-results-summary">
+              <span class="marketplace-results-icon" aria-hidden="true"><i class="bi bi-grid-3x3-gap"></i></span>
+              <div class="marketplace-results-copy">
+                <p id="catalogue-results-count" class="marketplace-results-count" aria-live="polite">Chargement du catalogue…</p>
+              </div>
+            </div>
+            <label class="marketplace-page-size-label" for="catalogue-page-size">
+              <span>Afficher</span>
+              <select id="catalogue-page-size" aria-label="Nombre d’articles par page">
+                <option value="8">8 articles</option>
+                <option value="12" selected>12 articles</option>
+                <option value="24">24 articles</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
         <!-- =====================================================
            BARRE DES FILTRES
            ===================================================== -->
@@ -7310,79 +8465,134 @@
               </select>
             </div>
           </div>
+
         </div>
 
         <!-- =====================================================
-           PRODUITS
+           RÉSULTATS DU CATALOGUE
            ===================================================== -->
 
-        <div class="product-grid" id="product-grid"></div>
+
+
+        <div class="product-grid" id="product-grid" aria-live="polite"></div>
 
         <!-- Aucun résultat -->
         <div class="empty-state" id="empty-state" hidden>
-          Aucun article ou service ne correspond à cette recherche.
+          Aucun article ou service ne correspond à cette recherche. Essayez une autre catégorie ou modifiez vos filtres.
         </div>
+
+        <nav class="marketplace-pagination" id="catalogue-pagination" aria-label="Pagination du catalogue" hidden></nav>
       </section>
 
       <!-- =======================================================
          SERVICES
          ======================================================= -->
 
-      <section class="editorial" id="univers">
-        <div class="editorial-image">
-          <img
-            loading="lazy"
-            decoding="async"
-            src="https://images.unsplash.com/photo-1604014237800-1c9102c219da?auto=format&fit=crop&w=1200&q=85"
-            alt="Intérieur lumineux et service de décoration"
-          />
+      <section class="editorial" id="univers" aria-labelledby="services-title">
+        <div class="service-showcase-shell">
+          <div class="service-visual" aria-label="Un intérieur accueillant, symbole du quotidien simplifié">
+            <img
+              loading="lazy"
+              decoding="async"
+              src="https://images.unsplash.com/photo-1604014237800-1c9102c219da?auto=format&fit=crop&w=1400&q=88"
+              alt="Intérieur chaleureux et lumineux, aménagé avec soin"
+            />
+            <div class="service-visual-overlay" aria-hidden="true"></div>
+            <div class="service-visual-topline">
+              <span class="service-photo-kicker"><i class="bi bi-stars" aria-hidden="true"></i> LE QUOTIDIEN, EN PLUS SIMPLE</span>
+              <span class="service-photo-mark" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
+            </div>
+            <div class="service-visual-caption">
+              <span class="service-caption-icon"><i class="bi bi-heart-fill" aria-hidden="true"></i></span>
+              <div>
+                <p>Un seul espace, de nombreuses possibilités</p>
+                <span>Les idées et services qui accompagnent vos journées.</span>
+              </div>
+            </div>
+            <div class="service-floating-note" aria-hidden="true">
+              <span class="service-floating-icon"><i class="bi bi-check2" aria-hidden="true"></i></span>
+              <span><strong>À votre rythme</strong><small>Explorez selon vos besoins</small></span>
+            </div>
+          </div>
+
+          <div class="editorial-copy service-copy">
+            <p class="eyebrow"><span class="service-eyebrow-dot" aria-hidden="true"></span> Les services E-tokiana</p>
+            <h2 id="services-title">Les bonnes solutions,<br /><em>plus près de vous.</em></h2>
+            <p class="service-lead">
+              Un cours à découvrir, un professionnel à trouver, des courses à faire livrer
+              ou une idée pour la maison : explorez des services pensés pour vous accompagner
+              dans les petits et grands moments du quotidien.
+            </p>
+
+            <div class="service-benefit-row" aria-label="Les atouts des services E-tokiana">
+              <span><i class="bi bi-compass" aria-hidden="true"></i> Facile à explorer</span>
+              <span><i class="bi bi-grid" aria-hidden="true"></i> Plusieurs univers</span>
+            </div>
+
+            <a class="service-primary-cta" href="#catalogue" data-show-services>
+              <span>Explorer les services</span>
+              <span class="service-cta-icon"><i class="bi bi-arrow-up-right" aria-hidden="true"></i></span>
+            </a>
+            <p class="service-microcopy"><i class="bi bi-info-circle" aria-hidden="true"></i> Les offres disponibles sont à retrouver dans le catalogue.</p>
+          </div>
         </div>
 
-        <div class="editorial-copy">
-          <p class="eyebrow">Les services E-tokiana</p>
+        <div class="services-directory">
+          <div class="services-directory-heading">
+            <div>
+              <p class="service-section-kicker">UN UNIVERS À EXPLORER</p>
+              <h3>De quoi avez-vous besoin aujourd’hui ?</h3>
+            </div>
+            <p>Choisissez un univers pour retrouver les services proposés dans le catalogue.</p>
+          </div>
 
-          <h2>
-            Plus de choix,<br />
-            <em>moins de tracas.</em>
-          </h2>
+          <div class="service-card-grid" aria-label="Catégories de services">
+            <a class="service-category-card service-card-learning" href="#catalogue" data-show-services aria-label="Explorer les cours et ateliers">
+              <span class="service-category-icon"><i class="bi bi-journal-bookmark" aria-hidden="true"></i></span>
+              <span class="service-card-content">
+                <span class="service-card-index">01 / APPRENDRE</span>
+                <strong>Cours &amp; ateliers</strong>
+                <span>Découvrir, apprendre et développer ses talents.</span>
+              </span>
+              <span class="service-card-arrow" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
+            </a>
 
-          <p>
-            Réservez un cours, trouvez un professionnel, faites livrer vos
-            courses ou équipez votre maison. E-tokiana rapproche les bonnes
-            solutions de votre quotidien.
-          </p>
+            <a class="service-category-card service-card-pro" href="#catalogue" data-show-services aria-label="Explorer les professionnels et savoir-faire">
+              <span class="service-category-icon"><i class="bi bi-tools" aria-hidden="true"></i></span>
+              <span class="service-card-content">
+                <span class="service-card-index">02 / TROUVER</span>
+                <strong>Professionnels</strong>
+                <span>Des savoir-faire et des compétences à découvrir.</span>
+              </span>
+              <span class="service-card-arrow" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
+            </a>
 
-          <ul class="service-highlights" aria-label="Services proposés">
-            <li>
-              <i class="bi bi-journal-bookmark" aria-hidden="true"></i>
-              <span>Cours &amp; ateliers</span>
-            </li>
+            <a class="service-category-card service-card-delivery" href="#catalogue" data-show-services aria-label="Explorer les courses et la livraison">
+              <span class="service-category-icon"><i class="bi bi-basket2" aria-hidden="true"></i></span>
+              <span class="service-card-content">
+                <span class="service-card-index">03 / SE SIMPLIFIER</span>
+                <strong>Courses &amp; livraison</strong>
+                <span>Des solutions pratiques pour vos besoins courants.</span>
+              </span>
+              <span class="service-card-arrow" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
+            </a>
 
-            <li>
-              <i class="bi bi-tools" aria-hidden="true"></i>
-              <span>Professionnels</span>
-            </li>
+            <a class="service-category-card service-card-home" href="#catalogue" data-show-services aria-label="Explorer les services maison et quotidien">
+              <span class="service-category-icon"><i class="bi bi-house-heart" aria-hidden="true"></i></span>
+              <span class="service-card-content">
+                <span class="service-card-index">04 / PRENDRE SOIN</span>
+                <strong>Maison &amp; quotidien</strong>
+                <span>Des idées pour prendre soin de votre espace de vie.</span>
+              </span>
+              <span class="service-card-arrow" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
+            </a>
+          </div>
 
-            <li>
-              <i class="bi bi-basket2" aria-hidden="true"></i>
-              <span>Livraison de courses</span>
-            </li>
-
-            <li>
-              <i class="bi bi-house-heart" aria-hidden="true"></i>
-              <span>Maison &amp; quotidien</span>
-            </li>
-          </ul>
-
-          <a
-            class="text-link service-link"
-            href="#catalogue"
-            data-show-services
-          >
-            Découvrir les services
-
-            <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
-          </a>
+          <div class="services-bottom-note">
+            <span class="services-bottom-note-icon"><i class="bi bi-lightbulb" aria-hidden="true"></i></span>
+            <p><strong>Une idée en tête ?</strong> Parcourez le catalogue pour découvrir les prestations actuellement disponibles et trouver celle qui correspond à votre besoin.</p>
+            <a href="#catalogue" data-show-services>Voir le catalogue <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+          </div>
         </div>
       </section>
 
@@ -7468,6 +8678,11 @@
               <i class="bi bi-send" aria-hidden="true"></i>
             </button>
           </div>
+
+          <label class="etk-newsletter-consent" for="newsletter-consent">
+            <input id="newsletter-consent" type="checkbox" required />
+            <span>J’accepte de recevoir le courrier mensuel E-tokiana. Je pourrai demander ma désinscription à tout moment.</span>
+          </label>
 
           <p class="newsletter-note">
             <i class="bi bi-check2" aria-hidden="true"></i>
@@ -8087,11 +9302,11 @@
             <p class="pd-material" id="product-modal-material"></p>
             <div class="pd-variants pd-variant-picker" id="product-modal-variants" hidden>
               <div class="pd-option-block" id="product-modal-colors-row" hidden>
-                <div class="pd-option-heading"><strong><i class="bi bi-palette2" aria-hidden="true"></i> Choisir une couleur</strong><span id="product-modal-selected-color">Choix requis</span></div>
+                <div class="pd-option-heading"><strong><i class="bi bi-palette2" aria-hidden="true"></i> Couleurs disponibles</strong><span id="product-modal-selected-color">Choix requis</span></div>
                 <div class="pd-choice-list pd-choice-list-colors" id="product-modal-colors-choices" role="group" aria-label="Choisir une couleur"></div>
               </div>
               <div class="pd-option-block" id="product-modal-sizes-row" hidden>
-                <div class="pd-option-heading"><strong><i class="bi bi-rulers" aria-hidden="true"></i> Choisir une taille / un format</strong><span id="product-modal-selected-size">Choix requis</span></div>
+                <div class="pd-option-heading"><strong><i class="bi bi-rulers" aria-hidden="true"></i> Tailles / formats disponibles</strong><span id="product-modal-selected-size">Choix requis</span></div>
                 <div class="pd-choice-list" id="product-modal-sizes-choices" role="group" aria-label="Choisir une taille ou un format"></div>
               </div>
               <p class="pd-variant-help" id="product-modal-variant-help" hidden>Choisissez les options souhaitées avant d’ajouter cet article au panier.</p>
@@ -8664,6 +9879,9 @@
             <button class="user-space-nav" data-user-view="history">
               <i class="bi bi-clock-history"></i><span>Historique</span>
             </button>
+            <button class="user-space-nav" id="user-space-newsletter-nav" type="button" hidden aria-haspopup="dialog" aria-controls="etk-newsletter-manager">
+              <i class="bi bi-envelope-paper-heart" aria-hidden="true"></i><span>Gestion de la newsletter</span>
+            </button>
             <button class="user-space-nav" data-user-view="favorites">
               <i class="bi bi-heart"></i><span>Favoris</span>
             </button>
@@ -8717,6 +9935,15 @@
                   <p>Gérez librement les rubriques, les articles et les partages du journal multi-thèmes.</p>
                 </div>
                 <button type="button" id="user-space-journal-settings-open"><span>Gérer le journal</span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
+              </section>
+              <section id="user-space-newsletter-settings-card" class="user-space-newsletter-settings-card" hidden aria-label="Gestion du courrier mensuel E-tokiana">
+                <div class="user-space-about-settings-icon"><i class="bi bi-envelope-paper-heart" aria-hidden="true"></i></div>
+                <div class="user-space-about-settings-copy">
+                  <span>COMMUNICATION &amp; FIDÉLISATION</span>
+                  <h3>Le courrier E-tokiana</h3>
+                  <p>Consultez les inscriptions, préparez le courrier du mois et exportez les adresses actives.</p>
+                </div>
+                <button type="button" id="user-space-newsletter-settings-open"><span>Gérer la newsletter</span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
               </section>
               <div class="user-dashboard-tabs" role="tablist" aria-label="Onglets du tableau de bord">
                 <button type="button" class="user-dashboard-tab is-active" role="tab" id="user-dashboard-tab-kpi" aria-selected="true" aria-controls="user-dashboard-panel-kpi" data-user-dashboard-tab="kpi">
@@ -9253,6 +10480,50 @@
         </button>
       </div>
     </section>
+
+    
+<!-- Fenêtres contextuelles de gestion des publications du journal -->
+<div class="etk-journal-dialog" id="etk-journal-edit-dialog" hidden aria-hidden="true">
+  <div class="etk-journal-dialog-backdrop" data-journal-dialog-close="edit" aria-hidden="true"></div>
+  <section class="etk-journal-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="etk-journal-edit-dialog-title" aria-describedby="etk-journal-edit-dialog-desc">
+    <header class="etk-journal-dialog-head"><div><span class="etk-journal-dialog-eyebrow">Bibliothèque éditoriale</span><h3 id="etk-journal-edit-dialog-title">Modifier l’article</h3><p id="etk-journal-edit-dialog-desc">Corrigez le titre, le thème, les visuels ou le statut de publication.</p></div><button type="button" class="etk-journal-dialog-close" data-journal-dialog-close="edit" aria-label="Fermer la fenêtre">×</button></header>
+    <form id="etk-journal-edit-dialog-form">
+      <div class="etk-journal-dialog-body"><input type="hidden" name="id" />
+        <div class="journal-admin-form-grid">
+          <label class="journal-admin-wide">Titre de l’article<input name="title" type="text" maxlength="120" required placeholder="Titre de l’article" /></label>
+          <label>Rubrique / thème<select name="collection" required></select></label>
+          <label>Date de publication<input name="date" type="date" required /></label>
+          <label class="journal-admin-wide">URL de l’image<input name="image" type="url" maxlength="600" required placeholder="https://…" /></label>
+          <label class="journal-admin-wide">Texte alternatif de l’image<input name="imageAlt" type="text" maxlength="180" required placeholder="Décrivez simplement l’image" /></label>
+          <label class="journal-admin-wide">Résumé de l’article<textarea name="excerpt" rows="4" maxlength="500" required placeholder="Présentez l’idée essentielle en quelques phrases…"></textarea><small>500 caractères maximum.</small></label>
+          <label>Publication<select name="status" required><option value="published">Publié sur le site</option><option value="draft">Brouillon · non visible du public</option></select></label>
+        </div>
+      </div>
+      <footer class="etk-journal-dialog-foot"><p class="etk-journal-dialog-status" id="etk-journal-edit-dialog-status" role="status" aria-live="polite"></p><button type="button" class="etk-journal-dialog-button" data-journal-dialog-close="edit">Annuler</button><button type="submit" class="etk-journal-dialog-button is-primary"><i class="bi bi-check2-circle" aria-hidden="true"></i> Enregistrer les modifications</button></footer>
+    </form>
+  </section>
+</div>
+<div class="etk-journal-dialog" id="etk-journal-collection-edit-dialog" hidden aria-hidden="true">
+  <div class="etk-journal-dialog-backdrop" data-journal-dialog-close="collection-edit" aria-hidden="true"></div>
+  <section class="etk-journal-dialog-panel is-confirm" role="dialog" aria-modal="true" aria-labelledby="etk-journal-collection-dialog-title">
+    <header class="etk-journal-dialog-head"><div><span class="etk-journal-dialog-eyebrow">Organisation éditoriale</span><h3 id="etk-journal-collection-dialog-title">Modifier la rubrique</h3><p>Le thème sera renommé sur le site sans déplacer les articles associés.</p></div><button type="button" class="etk-journal-dialog-close" data-journal-dialog-close="collection-edit" aria-label="Fermer la fenêtre">×</button></header>
+    <form id="etk-journal-collection-edit-dialog-form">
+      <div class="etk-journal-dialog-body"><input type="hidden" name="key" /><div class="journal-admin-form-grid">
+        <label class="journal-admin-wide">Nom de la rubrique<input name="title" type="text" maxlength="60" required placeholder="Nom du thème" /></label>
+        <label class="journal-admin-wide">Description courte <small>(facultatif)</small><textarea name="subtitle" rows="3" maxlength="180" placeholder="Présentez ce thème aux lecteurs"></textarea></label>
+      </div></div>
+      <footer class="etk-journal-dialog-foot"><p class="etk-journal-dialog-status" id="etk-journal-collection-dialog-status" role="status" aria-live="polite"></p><button type="button" class="etk-journal-dialog-button" data-journal-dialog-close="collection-edit">Annuler</button><button type="submit" class="etk-journal-dialog-button is-primary"><i class="bi bi-check2-circle" aria-hidden="true"></i> Enregistrer la rubrique</button></footer>
+    </form>
+  </section>
+</div>
+<div class="etk-journal-dialog" id="etk-journal-confirm-dialog" hidden aria-hidden="true">
+  <div class="etk-journal-dialog-backdrop" data-journal-dialog-close="confirm" aria-hidden="true"></div>
+  <section class="etk-journal-dialog-panel is-confirm" role="alertdialog" aria-modal="true" aria-labelledby="etk-journal-confirm-title" aria-describedby="etk-journal-confirm-message">
+    <header class="etk-journal-dialog-head"><div><span class="etk-journal-dialog-eyebrow">Confirmation requise</span><h3 id="etk-journal-confirm-title">Confirmer la suppression</h3></div><button type="button" class="etk-journal-dialog-close" data-journal-dialog-close="confirm" aria-label="Fermer la fenêtre">×</button></header>
+    <div class="etk-journal-dialog-body"><div class="etk-journal-dialog-confirm-icon"><i class="bi bi-trash3" aria-hidden="true"></i></div><p class="etk-journal-dialog-confirm-copy"><strong class="etk-journal-dialog-confirm-title" id="etk-journal-confirm-target"></strong><span id="etk-journal-confirm-message">Cette action ne peut pas être annulée.</span></p><p class="etk-journal-dialog-status" id="etk-journal-confirm-status" role="status" aria-live="polite"></p></div>
+    <footer class="etk-journal-dialog-foot"><button type="button" class="etk-journal-dialog-button" data-journal-dialog-close="confirm">Annuler</button><button type="button" class="etk-journal-dialog-button is-danger" id="etk-journal-confirm-accept"><i class="bi bi-trash3" aria-hidden="true"></i> Supprimer définitivement</button></footer>
+  </section>
+</div>
 
     <section
       class="modal"
@@ -11048,6 +12319,15 @@
           );
           const isStaffAccount = String(u.role || "").toLowerCase() === "staff";
           const staffRoleKey = isStaffAccount ? (u.staffRoleKey || window.EtoStaffRoles?.resolveKey(u) || "observer") : "";
+          // Affiche le nom réel de la fonction plutôt que l’abréviation d’interface
+          // (CM / STAFF). Pour un rôle personnalisé, conserve le nom saisi.
+          const assignedStaffRole = isStaffAccount
+            ? String(
+                staffRoleKey === "custom"
+                  ? (u.staffRole || window.EtoStaffRoles?.catalog?.custom?.label || "Rôle personnalisé")
+                  : (window.EtoStaffRoles?.catalog?.[staffRoleKey]?.label || u.staffRole || info.title || info.label)
+              ).replace(/^STAFF\s*[·-]\s*/i, "").trim()
+            : (u.staffRole || info.title || info.label);
           const staffPermissions = isStaffAccount
             ? (Array.isArray(u.staffPermissions) ? u.staffPermissions : (window.EtoStaffRoles?.catalog?.[staffRoleKey]?.permissions || ["dashboard.read"]))
             : [];
@@ -11338,13 +12618,13 @@
             ];
           } else if (isStaff) {
             dashboardStats = [
-              ["bi-person-workspace", info.label, "Rôle attribué"],
+              ["bi-person-workspace", assignedStaffRole, "Rôle attribué"],
               ["bi-box-seam", visibleProducts.length, "Produits accessibles"],
               ["bi-receipt", userOrders.length, "Commandes accessibles"],
               ["bi-shield-check", staffPermissions.length, "Droits attribués"],
             ];
             dashboardCards = [
-              ["bi-shield-check", "Votre rôle", `${esc(u.staffRole || info.title)} · ${staffPermissions.length} autorisation(s) configurée(s).`],
+              ["bi-shield-check", "Votre rôle", `${esc(assignedStaffRole)} · ${staffPermissions.length} autorisation(s) configurée(s).`],
               ["bi-box-seam", "Catalogue & stocks", staffHasPermission('products.read') || staffHasPermission('stock.manage') ? "Consultez les fiches et les disponibilités auxquelles votre rôle donne accès." : "Votre rôle ne donne pas accès au catalogue."],
               ["bi-receipt", "Commandes", staffHasPermission('orders.read') || staffHasPermission('orders.manage') ? "Consultez les commandes attribuées par les autorisations de votre rôle." : "Votre rôle ne donne pas accès aux commandes."],
               ["bi-lock", "Accès encadrés", "Les menus disponibles sont adaptés aux droits enregistrés pour votre rôle."],
@@ -12984,6 +14264,9 @@
           userSpace.hidden = false;
           userSpace.setAttribute("aria-hidden", "false");
           document.body.classList.add("user-space-open");
+          // Les droits et menus doivent être recalculés immédiatement après chaque rendu,
+          // sans attendre le premier clic de navigation.
+          window.dispatchEvent(new CustomEvent("etokiana-user-space-rendered"));
         };
         // app.js conserve la fonction openUserSpace() comme point d'entrée.
         // Le HTML fournit uniquement le rendu premium appelé par app.js.
@@ -13055,7 +14338,7 @@
   if (!root) return;
   const storageKey = 'etokiana-staff-invitations';
   const permissionLabels = {
-    'dashboard.read':'Tableau de bord', 'products.read':'Consulter les produits', 'products.manage':'Modifier les produits', 'content.edit':'Modifier les contenus produits', 'journal.manage':'Gérer le journal, supprimer et partager les articles',
+    'dashboard.read':'Tableau de bord', 'products.read':'Consulter les produits', 'products.manage':'Modifier les produits', 'content.edit':'Modifier les contenus produits', 'journal.manage':'Gérer le journal, supprimer et partager les articles', 'newsletter.manage':'Gérer les abonnés et préparer le courrier mensuel',
     'stock.manage':'Gérer les stocks', 'orders.read':'Consulter les commandes', 'orders.manage':'Mettre à jour les commandes',
     'customers.read':'Consulter les clients', 'sellers.read':'Consulter les vendeurs', 'staff.manage':'Gérer le personnel',
     'reports.read':'Rapports & export', 'history.read':'Historique', 'about.manage':'Modifier la page publique « À propos »'
@@ -13066,7 +14349,7 @@
     stock: { label:'Gestionnaire de stock', description:'Consulte le catalogue et met à jour les disponibilités et quantités.', permissions:['dashboard.read','products.read','stock.manage','history.read'] },
     orders: { label:'Gestionnaire des commandes', description:'Suit et met à jour les commandes, avec accès aux informations utiles des clients.', permissions:['dashboard.read','orders.read','orders.manage','customers.read','history.read'] },
     support: { label:'Service client', description:'Répond aux demandes et consulte les commandes et les informations client nécessaires.', permissions:['dashboard.read','orders.read','customers.read','history.read'] },
-    community: { label:'Community Manager', description:'Gère les rubriques, articles et partages du journal, ainsi que la page publique « À propos ». Aucun accès aux commandes, clients, stocks, à l’historique ou au personnel.', permissions:['dashboard.read','journal.manage','about.manage'] },
+    community: { label:'Community Manager', description:'Gère les rubriques, articles et partages du journal, ainsi que la page publique « À propos ». Aucun accès aux commandes, clients, stocks, à l’historique ou au personnel.', permissions:['dashboard.read','journal.manage','about.manage','newsletter.manage'] },
     editor: { label:'Rédacteur de contenu', description:'Prépare les fiches et textes éditoriaux sans accès aux commandes ni aux données clients.', permissions:['dashboard.read','products.read','content.edit','history.read'] },
     finance: { label:'Comptabilité & reporting', description:'Consulte les commandes, totaux et rapports pour le suivi financier.', permissions:['dashboard.read','orders.read','reports.read','history.read'] },
     observer: { label:'Observateur · lecture seule', description:'Consulte les indicateurs autorisés sans modifier les données.', permissions:['dashboard.read','products.read','orders.read','reports.read','history.read'] },
@@ -13649,8 +14932,20 @@
  'use strict';
  const $=(sel,root=document)=>root.querySelector(sel);
  const $$=(sel,root=document)=>Array.from(root.querySelectorAll(sel));
- const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
- const roleOf=u=>{const r=norm(u?.role); if(['owner','admin','superadmin'].includes(r))return 'admin'; if(['seller','vendeur'].includes(r))return 'seller'; if(['prestataire','provider'].includes(r))return 'provider'; if(['redac','editor','redacteur'].includes(r))return 'editor'; if(r==='staff'||u?.staffRoleKey)return 'staff'; return 'client';};
+ const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+ const parseUser=value=>{try{const parsed=value?JSON.parse(value):null;return parsed&&typeof parsed==='object'?parsed:null;}catch(_){return null;}};
+ const currentUser=()=>parseUser(localStorage.getItem('etokiana-user'))||parseUser(sessionStorage.getItem('etokiana-user'))||parseUser(localStorage.getItem('currentUser'))||window.currentUser||window.activeUser||window.authUser||window.etokianaCurrentUser||null;
+ const roleOf=u=>{
+  const r=norm(u?.role||u?.type||u?.accountType||u?.userType||u?.profil);
+  const email=norm(u?.email||u?.username);
+  if(u?.isAdmin===true||u?.is_admin===true||['owner','admin','superadmin','administrateur','administrator'].includes(r)||email==='admin@etokiana.fr')return 'admin';
+  // Les comptes invités au personnel doivent être classés Staff avant leurs libellés fonctionnels.
+  if(r==='staff'||u?.staffRoleKey)return 'staff';
+  if(['seller','vendeur','merchant','shop'].includes(r))return 'seller';
+  if(['prestataire','provider'].includes(r))return 'provider';
+  if(['redac','editor','redacteur','writer','journalist','content'].includes(r))return 'editor';
+  return 'client';
+ };
  const roleNames={admin:'Administrateur',seller:'Vendeur',provider:'Prestataire',editor:'Rédacteur',staff:'Personnel',client:'Client'};
  const policies={
   admin:{dashboard:'read',products:'delete',orders:'delete',documents:'delete',sellers:'delete',customers:'delete',staff:'delete',users:'delete',history:'read'},
@@ -13659,31 +14954,137 @@
   editor:{dashboard:'read',products:'edit-content',orders:'none',documents:'none',sellers:'none',customers:'none',staff:'none',users:'none',history:'read-own'},
   client:{dashboard:'read-own',products:'read',orders:'read-own',documents:'read-own',sellers:'read',customers:'none',staff:'none',users:'none',history:'none'}
  };
- const permFor=(u,menu)=>{const role=roleOf(u); if(menu==='profile'||menu==='favorites')return 'read'; if(role==='admin')return 'delete'; if(role==='staff'){const key=u.staffRoleKey||window.EtoStaffRoles?.resolveKey?.(u)||'observer'; const perms=Array.isArray(u.staffPermissions)?u.staffPermissions:(window.EtoStaffRoles?.catalog?.[key]?.permissions||[]); const checks={dashboard:['dashboard.read'],products:['products.read','products.manage','content.edit','stock.manage'],orders:['orders.read','orders.manage'],documents:['orders.read','orders.manage'],sellers:['sellers.read'],customers:['customers.read'],staff:['staff.manage'],history:['history.read']}; if(!checks[menu]?.some(p=>perms.includes(p)))return 'none'; if(menu==='products'&&perms.includes('products.manage'))return 'edit'; if(menu==='products'&&perms.includes('content.edit'))return 'edit-content'; if(menu==='products'&&perms.includes('stock.manage'))return 'update-stock'; if((menu==='orders'||menu==='documents')&&perms.includes('orders.manage'))return 'update'; if(menu==='staff'&&perms.includes('staff.manage'))return 'delete'; return 'read';} return policies[role]?.[menu]||'none';};
+ const permFor=(u,menu)=>{
+  const role=roleOf(u);
+  if(menu==='profile'||menu==='favorites')return 'read';
+  if(role==='admin')return 'delete';
+  if(role==='staff'){
+   const key=u.staffRoleKey||window.EtoStaffRoles?.resolveKey?.(u)||'observer';
+   const permissions=Array.isArray(u.staffPermissions)?u.staffPermissions:(window.EtoStaffRoles?.catalog?.[key]?.permissions||[]);
+   const checks={
+    dashboard:['dashboard.read'],
+    products:['products.read','products.manage','content.edit','stock.manage'],
+    orders:['orders.read','orders.manage'],
+    documents:['orders.read','orders.manage','documents.read','documents.manage'],
+    sellers:['sellers.read'],
+    customers:['customers.read'],
+    staff:['staff.manage'],
+    users:['users.manage'],
+    history:['history.read']
+   };
+   if(!(checks[menu]||[]).some(permission=>permissions.includes(permission)))return 'none';
+   if(menu==='products'&&permissions.includes('products.manage'))return 'edit';
+   if(menu==='products'&&permissions.includes('content.edit'))return 'edit-content';
+   if(menu==='products'&&permissions.includes('stock.manage'))return 'update-stock';
+   if((menu==='orders'||menu==='documents')&&permissions.includes('orders.manage'))return 'update';
+   if(menu==='staff'&&permissions.includes('staff.manage'))return 'delete';
+   return 'read';
+  }
+  return policies[role]?.[menu]||'none';
+ };
  const allowed=(u,menu)=>permFor(u,menu)!=='none';
- function apply(){const modal=$('#user-space-modal'); if(!modal)return; let u=null; try{u=JSON.parse(localStorage.getItem('etokiana-user')||'null')}catch{} if(!u)return; const role=roleOf(u); const menus=['dashboard','products','orders','documents','sellers','customers','staff','users','history','favorites','profile'];
-  menus.forEach(menu=>{const nav=$(`.user-space-nav[data-user-view="${menu}"]`,modal),panel=$(`.user-space-view[data-user-panel="${menu}"]`,modal); const can=allowed(u,menu); if(nav)nav.hidden=!can; if(panel)panel.hidden=!can;});
-  const customerNav=$('.user-space-nav[data-user-view="customers"]',modal); if(customerNav&&role==='seller')customerNav.querySelector('span').textContent='Mes clients';
-  const staffNav=$('.user-space-nav[data-user-view="staff"]',modal); if(staffNav&&role!=='admin'&&!(role==='staff'&&permFor(u,'staff')!=='none'))staffNav.hidden=true;
-  const active=$('.user-space-nav.active',modal); if(active?.hidden){const first=$('.user-space-nav:not([hidden])',modal); if(first)first.click();}
-  const title=$('#user-space-role-pill',modal); if(title)title.textContent=role==='staff'?(String(u.staffRoleKey||'').toLowerCase()==='community'||String(u.staffRole||'').toLowerCase().includes('community manager')?'CM':'STAFF'):roleNames[role].toUpperCase();
-  // Masquer les commandes incompatibles avec le niveau du profil.
-  const pp=permFor(u,'products'),op=permFor(u,'orders'),sp=permFor(u,'staff');
-  if(!['delete','delete-own'].includes(pp))$$('[data-admin-product-delete],[data-user-product-delete]',modal).forEach(b=>b.hidden=true);
-  if(!['delete','delete-own','edit','edit-content'].includes(pp))$$('[data-admin-product-add],[data-user-product-add],[data-admin-product-edit],[data-user-product-edit]',modal).forEach(b=>b.hidden=true);
-  if(role==='editor')$$('[data-admin-product-add],[data-user-product-add],[data-admin-product-delete],[data-user-product-delete]',modal).forEach(b=>b.hidden=true);
-  if(pp==='read'||pp==='read-own')$$('[data-user-product-edit],[data-user-product-delete],[data-user-product-add]',modal).forEach(b=>b.hidden=true);
-  if(!['delete','update','update-own'].includes(op))$$('[data-order-update],[data-user-order-update],[data-order-status-action]',modal).forEach(b=>b.hidden=true);
-  if(sp!=='delete')$$('[data-open-staff-invitation]',modal).forEach(b=>b.hidden=true);
-  // Les commandes de client restent limitées à son compte ; le texte explicite les droits appliqués.
-  let summary=$('.rbac-role-summary',modal); if(!summary){summary=document.createElement('div');summary.className='rbac-role-summary'; const head=$('.user-space-section-head',modal); if(head)head.insertAdjacentElement('afterend',summary);}
-  const summaryRoleLabel=role==='staff'?(u.staffRole||roleNames.staff):roleNames[role];
-  if(summary)summary.innerHTML=`<i class="bi bi-shield-check" aria-hidden="true"></i><span>Profil actif : <strong>${summaryRoleLabel}</strong></span><span>·</span><span>Menus et actions adaptés à vos autorisations</span>`;
+ const setHidden=(element,hidden)=>{const next=Boolean(hidden);if(element&&element.hidden!==next)element.hidden=next;};
+ const setSelectorHidden=(selector,hidden,root)=>$$(selector,root).forEach(element=>setHidden(element,hidden));
+ let applyTimer=0;
+ function apply(){
+  const modal=$('#user-space-modal');
+  if(!modal)return;
+  const u=currentUser();
+  if(!u)return;
+  const role=roleOf(u);
+  const menus=['dashboard','products','orders','documents','sellers','customers','staff','users','history','favorites','profile'];
+  const records=[];
+  menus.forEach(menu=>{
+   const nav=$(`.user-space-nav[data-user-view="${menu}"]`,modal);
+   const panel=$(`.user-space-view[data-user-panel="${menu}"]`,modal);
+   const can=allowed(u,menu);
+   // Réinitialiser chaque état à chaque ouverture : aucun ancien masquage ne reste d'un compte précédent.
+   if(nav)setHidden(nav,!can);
+   if(panel)setHidden(panel,!can);
+   if(nav)records.push({menu,nav,panel,can});
+  });
+  const customerNav=$('.user-space-nav[data-user-view="customers"]',modal);
+  if(customerNav){const label=customerNav.querySelector('span');if(label)label.textContent=role==='seller'?'Mes clients':'Clients';}
+  const sellerNav=$('.user-space-nav[data-user-view="sellers"] span',modal);
+  if(sellerNav)sellerNav.textContent=role==='seller'?'Ma boutique':'Vendeurs';
+  const sellerPanel=$('.user-space-view[data-user-panel="sellers"]',modal);
+  const sellerHeading=sellerPanel?.querySelector('.user-space-section-head h2');
+  if(sellerHeading)sellerHeading.textContent=role==='seller'?'Ma boutique':role==='admin'?'Réseau de vendeurs':'Vendeurs';
+  const sellerLabel=sellerPanel?.querySelector('.user-space-section-head .user-space-label');
+  if(sellerLabel)sellerLabel.textContent=role==='seller'?'VOTRE BOUTIQUE':'RÉSEAU & PARTENAIRES';
+
+  // Choisir explicitement le panneau visible; ne pas simuler un clic pour réparer l'état initial.
+  const visible=records.filter(record=>record.can&&record.nav&&!record.nav.hidden);
+  const currentMenu=$('.user-space-nav.active',modal)?.dataset.userView;
+  const chosen=visible.find(record=>record.menu===currentMenu)||visible.find(record=>record.menu==='dashboard')||visible[0]||null;
+  records.forEach(({nav,panel})=>{
+   if(nav)nav.classList.toggle('active',Boolean(chosen&&nav===chosen.nav));
+   if(panel)panel.classList.toggle('active',Boolean(chosen&&panel===chosen.panel));
+  });
+
+  // Masquage des actions basé sur les autorisations courantes et réversible lors d'un changement de compte.
+  const productPermission=permFor(u,'products');
+  const orderPermission=permFor(u,'orders');
+  const staffPermission=permFor(u,'staff');
+  const canDeleteProducts=['delete','delete-own'].includes(productPermission);
+  const canAddProducts=['delete','delete-own','edit'].includes(productPermission);
+  const canEditProducts=['delete','delete-own','edit','edit-content'].includes(productPermission);
+  const canUpdateOrders=['delete','update','update-own'].includes(orderPermission);
+  setSelectorHidden('[data-admin-product-delete],[data-user-product-delete]',!canDeleteProducts,modal);
+  setSelectorHidden('[data-admin-product-add],[data-user-product-add]',!canAddProducts,modal);
+  setSelectorHidden('[data-admin-product-edit],[data-user-product-edit]',!canEditProducts,modal);
+  setSelectorHidden('[data-order-update],[data-user-order-update],[data-order-status-action]',!canUpdateOrders,modal);
+  setSelectorHidden('[data-open-staff-invitation]',staffPermission!=='delete',modal);
+
+  let summary=$('.rbac-role-summary',modal);
+  const chosenHead=(chosen?.panel||$('.user-space-view.active',modal)||modal).querySelector('.user-space-section-head');
+  if(!summary){
+   summary=document.createElement('div');summary.className='rbac-role-summary';
+   if(chosenHead)chosenHead.insertAdjacentElement('afterend',summary);
+  } else if(chosenHead&&summary.previousElementSibling!==chosenHead){
+   chosenHead.insertAdjacentElement('afterend',summary);
+  }
+  if(summary){
+   let icon=summary.querySelector('[data-rbac-icon]');
+   let profile=summary.querySelector('[data-rbac-profile]');
+   let separator=summary.querySelector('[data-rbac-separator]');
+   let explanation=summary.querySelector('[data-rbac-explanation]');
+   if(!icon||!profile||!separator||!explanation){
+    summary.replaceChildren();
+    icon=document.createElement('i');icon.className='bi bi-shield-check';icon.setAttribute('aria-hidden','true');icon.dataset.rbacIcon='';
+    profile=document.createElement('span');profile.dataset.rbacProfile='';
+    separator=document.createElement('span');separator.textContent='·';separator.dataset.rbacSeparator='';
+    explanation=document.createElement('span');explanation.textContent='Menus et actions adaptés à vos autorisations';explanation.dataset.rbacExplanation='';
+    summary.append(icon,profile,separator,explanation);
+   }
+   const roleLabel=role==='staff'?(u.staffRole||window.EtoStaffRoles?.catalog?.[u.staffRoleKey||window.EtoStaffRoles?.resolveKey?.(u)]?.label||roleNames.staff):roleNames[role];
+   const profileText=`Profil actif : ${roleLabel}`;
+   if(profile.textContent!==profileText){profile.replaceChildren();profile.append(document.createTextNode('Profil actif : '));const strong=document.createElement('strong');strong.textContent=roleLabel;profile.append(strong);}
+  }
  }
- function guard(event){const nav=event.target.closest('.user-space-nav[data-user-view]'); if(!nav)return; let u=null;try{u=JSON.parse(localStorage.getItem('etokiana-user')||'null')}catch{} if(!u)return; if(!allowed(u,nav.dataset.userView)){event.preventDefault();event.stopImmediatePropagation();apply();}}
+ function scheduleApply(){window.clearTimeout(applyTimer);applyTimer=window.setTimeout(apply,0);}
+ function guard(event){
+  const nav=event.target.closest?.('.user-space-nav[data-user-view]');
+  if(!nav)return;
+  const u=currentUser();
+  if(!u)return;
+  if(!allowed(u,nav.dataset.userView)){event.preventDefault();event.stopImmediatePropagation();scheduleApply();}
+ }
  document.addEventListener('click',guard,true);
- const modal=$('#user-space-modal'); if(modal){new MutationObserver(()=>{if(!modal.hidden&&modal.classList.contains('open'))apply()}).observe(modal,{attributes:true,attributeFilter:['class','hidden','aria-hidden']}); new MutationObserver(()=>{if(!modal.hidden&&modal.classList.contains('open')){clearTimeout(window.__etkRbacTimer);window.__etkRbacTimer=setTimeout(apply,60);}}).observe(modal,{childList:true,subtree:true}); modal.addEventListener('click',e=>{if(e.target.closest('.user-space-nav'))setTimeout(apply,0);});}
- document.addEventListener('DOMContentLoaded',apply); window.addEventListener('storage',apply); window.addEventListener('etokiana-staff-changed',apply); window.EtoRolePolicy={apply,roleOf,permFor,policies}; setTimeout(apply,250); setTimeout(apply,900);
+ const modal=$('#user-space-modal');
+ const isVisible=()=>Boolean(modal&&!modal.hidden&&modal.getAttribute('aria-hidden')!=='true');
+ if(modal){
+  new MutationObserver(()=>{if(isVisible())scheduleApply();}).observe(modal,{attributes:true,attributeFilter:['class','hidden','aria-hidden']});
+  new MutationObserver(()=>{if(isVisible())scheduleApply();}).observe(modal,{childList:true,subtree:true});
+  modal.addEventListener('click',event=>{if(event.target.closest?.('.user-space-nav'))scheduleApply();});
+ }
+ document.addEventListener('DOMContentLoaded',scheduleApply);
+ window.addEventListener('storage',scheduleApply);
+ window.addEventListener('etokiana-staff-changed',scheduleApply);
+ window.addEventListener('etokiana:auth-change',scheduleApply);
+ window.addEventListener('etokiana-user-space-rendered',scheduleApply);
+ window.EtoRolePolicy={apply,roleOf,permFor,policies};
+ scheduleApply();
 })();
 </script>
 
@@ -14872,6 +16273,248 @@
   @media(max-width:1120px){.admin-account-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))!important}.admin-account-search{grid-column:1/-1}.admin-account-list-head{display:none}.admin-account-row{grid-template-columns:20px minmax(0,1fr) minmax(95px,.5fr)!important}.admin-account-row>.admin-account-type-cell{grid-column:2}.admin-account-row>.admin-account-role{grid-column:3;grid-row:2}.admin-account-row>.admin-account-state{grid-column:2;grid-row:3}.admin-account-row>.admin-account-actions{grid-column:2/-1;grid-row:4;justify-content:flex-start}}
   @media(max-width:680px){.admin-account-toolbar{grid-template-columns:minmax(0,1fr)!important}.admin-account-search{grid-column:auto}.admin-account-row{grid-template-columns:20px minmax(0,1fr)!important;gap:8px}.admin-account-row>.admin-account-identity,.admin-account-row>.admin-account-type-cell,.admin-account-row>.admin-account-role,.admin-account-row>.admin-account-state,.admin-account-row>.admin-account-actions{grid-column:2;grid-row:auto}.admin-account-row>.admin-account-type-cell{margin-top:3px}.admin-account-row>.admin-account-role{font-size:11px}.admin-account-row>.admin-account-actions{justify-content:flex-start}}
 </style>
+
+
+<style id="etokiana-newsletter-manager-style">
+  .etk-newsletter-consent{display:flex;align-items:flex-start;gap:9px;margin:11px 0 2px;color:#72776d;font-size:11px;line-height:1.55;cursor:pointer}
+  .etk-newsletter-consent input{flex:0 0 auto;width:15px;height:15px;margin-top:1px;accent-color:#176b45}
+  #user-space-newsletter-settings-card[hidden]{display:none!important}
+  #user-space-newsletter-settings-card{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:15px;margin:0 0 24px;padding:18px 20px;border:1px solid #dce7d9;border-radius:15px;background:linear-gradient(115deg,#f5f8f1 0%,#fff 72%);box-shadow:0 8px 24px rgba(42,73,45,.055)}
+  #user-space-newsletter-settings-card .user-space-about-settings-icon{display:grid;place-items:center;width:46px;height:46px;border:1px solid #dce7d9;border-radius:13px;background:#fff;color:#376345;font-size:19px}
+  #user-space-newsletter-settings-card .user-space-about-settings-copy{min-width:0}
+  #user-space-newsletter-settings-card .user-space-about-settings-copy>span{color:#8b7546;font-size:9px;font-weight:900;letter-spacing:.12em}
+  #user-space-newsletter-settings-card h3{margin:4px 0;color:#263d2d;font-size:15px;font-weight:850;letter-spacing:-.02em}
+  #user-space-newsletter-settings-card p{margin:0;color:#748074;font-size:11px;line-height:1.6}
+  #user-space-newsletter-settings-open{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:39px;padding:0 13px;border:1px solid #d4e1d1;border-radius:9px;background:#fff;color:#31583a;font-size:11px;font-weight:800;white-space:nowrap;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
+  #user-space-newsletter-settings-open:hover{background:#edf4e9;border-color:#b7cfb3;transform:translateY(-1px)}
+  #user-space-newsletter-nav{position:relative}
+  #user-space-newsletter-nav .etk-nl-nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;margin-left:auto;padding:0 5px;border-radius:999px;background:#b84036;color:#fff;font-size:10px;font-weight:900;line-height:1}
+  #etk-newsletter-manager .etk-nl-notice{display:flex;align-items:flex-start;gap:10px;margin:0 0 15px;padding:12px 14px;border:1px solid #d9e6d3;border-radius:12px;background:#f1f7ed;color:#31583a;font-size:12px;line-height:1.55}
+  #etk-newsletter-manager .etk-nl-notice[hidden]{display:none!important}
+  #etk-newsletter-manager .etk-nl-readonly-note{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#f4f3ef;color:#64685e;font-size:11px;line-height:1.55}
+  #etk-newsletter-manager .etk-nl-readonly-note[hidden]{display:none!important}
+  #etk-newsletter-manager[hidden]{display:none!important}
+  #etk-newsletter-manager{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:clamp(10px,2.5vw,28px);background:rgba(19,31,24,.58);backdrop-filter:blur(8px)}
+  #etk-newsletter-manager .etk-nl-panel{display:flex;flex-direction:column;width:min(1120px,100%);max-height:min(92vh,960px);overflow:hidden;border:1px solid #e6e2d8;border-radius:22px;background:#fbfaf6;box-shadow:0 30px 100px rgba(0,0,0,.24);color:#25382b}
+  #etk-newsletter-manager .etk-nl-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:23px 26px;border-bottom:1px solid #e9e5db;background:linear-gradient(120deg,#f3f7ef,#fffdf8 70%,#f7efe1)}
+  #etk-newsletter-manager .etk-nl-kicker{display:flex;align-items:center;gap:7px;margin-bottom:6px;color:#8b7546;font-size:9px;font-weight:900;letter-spacing:.16em;text-transform:uppercase}
+  #etk-newsletter-manager .etk-nl-head h2{margin:0;color:#19372a;font-family:'Playfair Display',Georgia,serif;font-size:clamp(25px,4vw,35px);font-weight:600;letter-spacing:-.03em}
+  #etk-newsletter-manager .etk-nl-head p{max-width:700px;margin:7px 0 0;color:#707b70;font-size:12px;line-height:1.6}
+  #etk-newsletter-manager .etk-nl-close{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid #e1ddd2;border-radius:12px;background:white;color:#273b2b;font-size:20px;cursor:pointer}
+  #etk-newsletter-manager .etk-nl-body{padding:20px 24px 24px;overflow:auto}
+  #etk-newsletter-manager .etk-nl-local-note{display:flex;gap:10px;align-items:flex-start;margin:0 0 17px;padding:12px 14px;border:1px solid #e9ddbd;border-radius:12px;background:#fff9eb;color:#74613a;font-size:11px;line-height:1.6}
+  #etk-newsletter-manager .etk-nl-local-note i{margin-top:2px;font-size:15px}
+  #etk-newsletter-manager .etk-nl-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:17px}
+  #etk-newsletter-manager .etk-nl-stat{padding:13px 15px;border:1px solid #e7e4da;border-radius:13px;background:#fff}
+  #etk-newsletter-manager .etk-nl-stat span{display:block;color:#81867c;font-size:10px;font-weight:700}
+  #etk-newsletter-manager .etk-nl-stat strong{display:block;margin-top:3px;color:#19372a;font-size:25px;letter-spacing:-.04em}
+  #etk-newsletter-manager .etk-nl-grid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:16px;align-items:start}
+  #etk-newsletter-manager .etk-nl-card{min-width:0;padding:18px;border:1px solid #e7e4da;border-radius:16px;background:#fff;box-shadow:0 4px 16px rgba(30,45,32,.025)}
+  #etk-newsletter-manager .etk-nl-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:13px}
+  #etk-newsletter-manager .etk-nl-card-head h3{margin:0;color:#253a2a;font-size:16px;font-weight:850;letter-spacing:-.02em}
+  #etk-newsletter-manager .etk-nl-card-head p{margin:5px 0 0;color:#858a80;font-size:11px;line-height:1.5}
+  #etk-newsletter-manager .etk-nl-count{flex:0 0 auto;padding:6px 9px;border-radius:999px;background:#edf5eb;color:#316343;font-size:10px;font-weight:850}
+  #etk-newsletter-manager .etk-nl-search{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:0 11px;height:39px;border:1px solid #e4e1d8;border-radius:9px;background:#fff;color:#819080}
+  #etk-newsletter-manager .etk-nl-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:12px;color:#263b2c}
+  #etk-newsletter-manager .etk-nl-subscriber-list{display:grid;gap:8px;max-height:390px;overflow:auto}
+  #etk-newsletter-manager .etk-nl-subscriber{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:11px;border:1px solid #eeece5;border-radius:11px;background:#fffefa}
+  #etk-newsletter-manager .etk-nl-subscriber strong{display:block;overflow-wrap:anywhere;color:#283b2d;font-size:12px;font-weight:800}
+  #etk-newsletter-manager .etk-nl-subscriber small{display:block;margin-top:4px;color:#898d83;font-size:10px}
+  #etk-newsletter-manager .etk-nl-subscriber-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap}
+  #etk-newsletter-manager .etk-nl-badge{display:inline-flex;align-items:center;padding:4px 7px;border:1px solid #d7e6d4;border-radius:999px;background:#eef6eb;color:#2d6940;font-size:9px;font-weight:850;white-space:nowrap}
+  #etk-newsletter-manager .etk-nl-badge.is-off{border-color:#e6e1d8;background:#f5f3ee;color:#89877f}
+  #etk-newsletter-manager .etk-nl-small-btn{min-height:29px;padding:5px 8px;border:1px solid #e2ded4;border-radius:7px;background:#fff;color:#586657;font-size:10px;font-weight:750;cursor:pointer}
+  #etk-newsletter-manager .etk-nl-small-btn.is-danger{border-color:#edd8d5;color:#a33c35}
+  #etk-newsletter-manager .etk-nl-export{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:35px;padding:8px 10px;border:1px solid #d9e3d5;border-radius:9px;background:#f6faf3;color:#31583a;font-size:10px;font-weight:800;cursor:pointer}
+  #etk-newsletter-manager .etk-nl-form{display:grid;gap:11px}
+  #etk-newsletter-manager .etk-nl-form label{display:grid;gap:5px;color:#465447;font-size:11px;font-weight:800}
+  #etk-newsletter-manager .etk-nl-form input,#etk-newsletter-manager .etk-nl-form select,#etk-newsletter-manager .etk-nl-form textarea{width:100%;min-width:0;padding:10px 11px;border:1px solid #dfded5;border-radius:9px;background:#fff;color:#24372a;font:inherit;font-size:12px;outline:none}
+  #etk-newsletter-manager .etk-nl-form input:focus,#etk-newsletter-manager .etk-nl-form textarea:focus{border-color:#548363;box-shadow:0 0 0 3px rgba(51,113,72,.1)}
+  #etk-newsletter-manager .etk-nl-form textarea{min-height:180px;resize:vertical;line-height:1.6}
+  #etk-newsletter-manager .etk-nl-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:3px}
+  #etk-newsletter-manager .etk-nl-primary,#etk-newsletter-manager .etk-nl-secondary{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:9px 12px;border:1px solid #dcded3;border-radius:9px;background:#fff;color:#34503a;font-size:11px;font-weight:850;cursor:pointer}
+  #etk-newsletter-manager .etk-nl-primary{border-color:#176b45;background:#176b45;color:#fff}
+  #etk-newsletter-manager .etk-nl-primary:hover{background:#125837}
+  #etk-newsletter-manager .etk-nl-status{min-height:20px;margin:10px 0 0;color:#316343;font-size:11px;line-height:1.55}
+  #etk-newsletter-manager .etk-nl-preview{margin-top:13px;padding:15px;border:1px dashed #cfcfbd;border-radius:12px;background:#fbfaf6;color:#39493b;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.7}
+  #etk-newsletter-manager .etk-nl-empty{padding:24px 12px;border:1px dashed #e3e0d6;border-radius:10px;color:#878b80;text-align:center;font-size:12px;line-height:1.6}
+  @media(max-width:820px){#user-space-newsletter-settings-card{grid-template-columns:42px minmax(0,1fr);gap:11px;padding:15px}#user-space-newsletter-settings-card .user-space-about-settings-icon{width:42px;height:42px}#user-space-newsletter-settings-open{grid-column:1/-1;width:100%}#etk-newsletter-manager .etk-nl-grid{grid-template-columns:minmax(0,1fr)}#etk-newsletter-manager .etk-nl-body{padding:15px}}
+  @media(max-width:560px){#etk-newsletter-manager{padding:0;align-items:stretch}#etk-newsletter-manager .etk-nl-panel{width:100%;max-height:100dvh;border-radius:0;border:0}#etk-newsletter-manager .etk-nl-head{padding:17px 16px}#etk-newsletter-manager .etk-nl-head h2{font-size:26px}#etk-newsletter-manager .etk-nl-stats{gap:7px}#etk-newsletter-manager .etk-nl-stat{padding:11px 10px}#etk-newsletter-manager .etk-nl-stat strong{font-size:21px}#etk-newsletter-manager .etk-nl-card{padding:13px}#etk-newsletter-manager .etk-nl-subscriber{grid-template-columns:minmax(0,1fr)}#etk-newsletter-manager .etk-nl-subscriber-actions{justify-content:flex-start}}
+  @media(prefers-reduced-motion:reduce){#user-space-newsletter-settings-open{transition:none}}
+</style>
+
+<div id="etk-newsletter-manager" hidden aria-hidden="true">
+  <section class="etk-nl-panel" role="dialog" aria-modal="true" aria-labelledby="etk-nl-title">
+    <header class="etk-nl-head">
+      <div><span class="etk-nl-kicker"><i class="bi bi-envelope-paper-heart" aria-hidden="true"></i> Communication & fidélisation</span><h2 id="etk-nl-title">Gestion de la newsletter</h2><p>Gérez les inscriptions, préparez le courrier du mois et préparez un brouillon d’e-mail à envoyer aux abonnés.</p></div>
+      <button type="button" class="etk-nl-close" data-nl-close aria-label="Fermer la gestion de la newsletter">×</button>
+    </header>
+    <div class="etk-nl-body">
+      <div class="etk-nl-local-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span><strong>Version gratuite locale.</strong> Les inscriptions et le brouillon sont enregistrés dans le navigateur utilisé. Ils ne sont pas encore centralisés entre les navigateurs des visiteurs ; pour une collecte réelle de tous les visiteurs, il faudra connecter un stockage partagé. Le bouton d’envoi ouvre un brouillon dans votre messagerie mais n’envoie rien automatiquement.</span></div>
+      <p class="etk-nl-readonly-note" id="etk-nl-readonly-note" hidden>Mode consultation administrateur : vous pouvez voir les abonnés et les statistiques. La Community Manager est responsable de la préparation et de la gestion du courrier.</p>
+      <div class="etk-nl-notice" id="etk-nl-new-subscription-notice" hidden role="status" aria-live="polite"><i class="bi bi-bell-fill" aria-hidden="true"></i><span id="etk-nl-new-subscription-message">Nouvelle inscription à la newsletter.</span></div>
+      <div class="etk-nl-stats" aria-live="polite">
+        <div class="etk-nl-stat"><span>Abonnés actifs</span><strong id="etk-nl-active-count">0</strong></div>
+        <div class="etk-nl-stat"><span>Désinscrits</span><strong id="etk-nl-off-count">0</strong></div>
+        <div class="etk-nl-stat"><span>Courrier du mois</span><strong id="etk-nl-draft-state" style="font-size:17px;letter-spacing:-.02em">À préparer</strong></div>
+      </div>
+      <div class="etk-nl-grid">
+        <section class="etk-nl-card" aria-labelledby="etk-nl-subscribers-title">
+          <div class="etk-nl-card-head"><div><h3 id="etk-nl-subscribers-title">Liste des abonnés</h3><p>Les adresses sont privées et les destinataires seront placés en copie cachée.</p></div><span class="etk-nl-count" id="etk-nl-count-pill">0 contact</span></div>
+          <label class="etk-nl-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" id="etk-nl-search" placeholder="Rechercher une adresse e-mail…" aria-label="Rechercher un abonné" /></label>
+          <div class="etk-nl-subscriber-list" id="etk-nl-subscriber-list" aria-live="polite"><div class="etk-nl-empty">Aucun inscrit pour le moment.</div></div>
+          <div class="etk-nl-actions" style="margin-top:12px"><button type="button" class="etk-nl-export" data-nl-export><i class="bi bi-download" aria-hidden="true"></i> Exporter la liste CSV</button><button type="button" class="etk-nl-secondary" data-nl-refresh><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Actualiser</button></div>
+        </section>
+        <section class="etk-nl-card" id="etk-nl-compose-card" aria-labelledby="etk-nl-compose-title">
+          <div class="etk-nl-card-head"><div><h3 id="etk-nl-compose-title">Préparer le courrier mensuel</h3><p>Enregistrez le brouillon, vérifiez son aperçu puis préparez l’e-mail.</p></div></div>
+          <form class="etk-nl-form" id="etk-nl-compose-form">
+            <label>Mois concerné<input type="month" name="month" id="etk-nl-month" required /></label>
+            <label>Objet de l’e-mail<input type="text" name="subject" id="etk-nl-subject" maxlength="160" required placeholder="Le courrier E-tokiana — octobre 2026" /></label>
+            <label>Phrase d’introduction / aperçu<input type="text" name="preheader" id="etk-nl-preheader" maxlength="180" placeholder="Les bonnes idées, au bon moment." /></label>
+            <label>Contenu du courrier<textarea name="body" id="etk-nl-body-text" maxlength="12000" required placeholder="Présentez les actualités, articles du journal, nouveautés et inspirations du mois…"></textarea></label>
+            <label>Lien principal (facultatif)<input type="url" name="link" id="etk-nl-link" maxlength="700" placeholder="https://votre-site/…" /></label>
+            <div class="etk-nl-actions"><button type="submit" class="etk-nl-primary"><i class="bi bi-save2" aria-hidden="true"></i> Enregistrer le brouillon</button><button type="button" class="etk-nl-secondary" data-nl-preview><i class="bi bi-eye" aria-hidden="true"></i> Aperçu</button><button type="button" class="etk-nl-secondary" data-nl-prepare><i class="bi bi-envelope-arrow-up" aria-hidden="true"></i> Préparer l’e-mail</button></div>
+          </form>
+          <div id="etk-nl-preview-box" class="etk-nl-preview" hidden></div>
+          <p class="etk-nl-status" id="etk-nl-status" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script id="etokiana-newsletter-runtime">
+(() => {
+  'use strict';
+  const SUBSCRIBERS_KEY = 'etokiana-newsletter-subscribers';
+  const DRAFT_KEY = 'etokiana-newsletter-draft';
+  const NOTICE_SEEN_KEY = 'etokiana-newsletter-notice-seen-at';
+  const noticeSeenKeyForCurrentRole = () => `${NOTICE_SEEN_KEY}-${isAdministrator() ? 'admin' : 'community'}`;
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const safeRead = (key, fallback) => { try { const value = JSON.parse(localStorage.getItem(key) || 'null'); return value == null ? fallback : value; } catch (_) { return fallback; } };
+  const safeWrite = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_) { return false; } };
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const normalizedRole = user => String(user?.role || user?.type || user?.accountType || user?.userType || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const normalizedLabel = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const currentUser = () => { for (const raw of [localStorage.getItem('etokiana-user'), sessionStorage.getItem('etokiana-user'), localStorage.getItem('currentUser')]) { try { const user = raw ? JSON.parse(raw) : null; if (user && typeof user === 'object') return user; } catch (_) {} } return window.currentUser || window.activeUser || window.authUser || window.etokianaCurrentUser || null; };
+  const canManage = () => {
+    const user = currentUser(); if (!user) return false;
+    const role = normalizedRole(user);
+    const labels = [user.role, user.type, user.accountType, user.userType, user.staffRole, user.staffTitle, user.jobTitle, user.position, user.function, user.roleLabel].map(normalizedLabel);
+    const admin = user.isAdmin === true || user.is_admin === true || ['admin','owner','superadmin','administrateur','administrator'].includes(role) || role.includes('admin') || labels.some(value => ['admin','owner','superadmin','administrateur','administrator'].includes(value) || value.includes('administrateur')) || normalizedLabel(user.email) === 'admin@etokiana.fr';
+    if (admin) return true;
+    let resolvedKey = '';
+    try { resolvedKey = String(user.staffRoleKey || window.EtoStaffRoles?.resolveKey?.(user) || '').toLowerCase(); } catch (_) {}
+    const permissions = Array.isArray(user.staffPermissions) ? user.staffPermissions : (window.EtoStaffRoles?.catalog?.[resolvedKey]?.permissions || []);
+    const communityRole = resolvedKey === 'community' || labels.some(value => value === 'cm' || value.includes('community manager') || value.includes('community-manager') || value.includes('community')); 
+    const staff = role === 'staff' || Boolean(user.staffRoleKey) || communityRole;
+    return communityRole || (staff && permissions.includes('newsletter.manage'));
+  };
+  const isAdministrator = () => { const user=currentUser(); if(!user)return false; const role=normalizedRole(user); const labels=[user.role,user.type,user.accountType,user.userType,user.staffRole,user.staffTitle,user.jobTitle,user.position,user.function,user.roleLabel].map(normalizedLabel); return user.isAdmin===true || user.is_admin===true || ['admin','owner','superadmin','administrateur','administrator'].includes(role) || role.includes('admin') || labels.some(value=>['admin','owner','superadmin','administrateur','administrator'].includes(value)||value.includes('administrateur')) || normalizedLabel(user.email)==='admin@etokiana.fr'; };
+  const isCommunityManager = () => { const user=currentUser(); if(!user)return false; const labels=[user.role,user.type,user.accountType,user.userType,user.staffRole,user.staffTitle,user.jobTitle,user.position,user.function,user.roleLabel].map(normalizedLabel); let key=''; try{key=String(user.staffRoleKey||window.EtoStaffRoles?.resolveKey?.(user)||'').toLowerCase();}catch(_){} return key==='community'||labels.some(value=>value==='cm'||value.includes('community manager')||value.includes('community-manager')||value.includes('community')) || (Array.isArray(user.staffPermissions)&&user.staffPermissions.includes('newsletter.manage')); };
+  const modal = $('#etk-newsletter-manager');
+  // Place la fenêtre directement sous body pour qu'elle passe au-dessus de tous les modaux/espaces utilisateur.
+  if (modal && modal.parentElement !== document.body) document.body.appendChild(modal);
+  let managerOpener = null;
+  const form = $('#newsletter-form');
+  const status = $('#etk-nl-status');
+  let message = $('#form-message');
+  const getSubscribers = () => { const list = safeRead(SUBSCRIBERS_KEY, []); return Array.isArray(list) ? list.filter(row => row && row.email) : []; };
+  const setStatus = text => { if (status) status.textContent = text; };
+  const formatDate = value => { if (!value) return 'Date inconnue'; const date = new Date(value); return Number.isNaN(date.getTime()) ? 'Date inconnue' : date.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}); };
+  const monthLabel = value => { if (!value) return ''; const date = new Date(`${value}-01T12:00:00`); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}); };
+  const getComposeData = () => ({ month:$('#etk-nl-month')?.value || '', subject:$('#etk-nl-subject')?.value.trim() || '', preheader:$('#etk-nl-preheader')?.value.trim() || '', body:$('#etk-nl-body-text')?.value.trim() || '', link:$('#etk-nl-link')?.value.trim() || '', updatedAt:new Date().toISOString() });
+  const activeSubscribers = () => getSubscribers().filter(row => row.status !== 'unsubscribed');
+  const getNewSubscriberRows = () => { const seenAt=safeRead(noticeSeenKeyForCurrentRole(),''); return activeSubscribers().filter(row=>row.source==='site' && row.subscribedAt && (!seenAt || row.subscribedAt>seenAt)); };
+  const updateNotificationBadge = () => { const nav=$('#user-space-newsletter-nav'); if(!nav)return; let badge=nav.querySelector('.etk-nl-nav-badge'); const count=getNewSubscriberRows().length; if(count>0){if(!badge){badge=document.createElement('span');badge.className='etk-nl-nav-badge';badge.setAttribute('aria-label','Nouvelles inscriptions à la newsletter');nav.appendChild(badge);}badge.textContent=count>99?'99+':String(count);badge.hidden=false;}else if(badge){badge.remove();} };
+  const renderRoleView = () => { const adminOnly=isAdministrator()&&!isCommunityManager(); const compose=$('#etk-nl-compose-card'); if(compose) compose.hidden=adminOnly; const readOnly=$('#etk-nl-readonly-note'); if(readOnly) readOnly.hidden=!adminOnly; };
+  const renderNewSubscriberNotice = () => { const rows=getNewSubscriberRows(); const notice=$('#etk-nl-new-subscription-notice'); const msg=$('#etk-nl-new-subscription-message'); if(notice){notice.hidden=!rows.length;if(msg)msg.textContent=rows.length===1?'Une nouvelle personne vient de s’abonner à la newsletter.':`${rows.length} nouvelles inscriptions à la newsletter sont à consulter.`;} updateNotificationBadge(); };
+  const renderSubscribers = () => {
+    if (!modal) return;
+    const all = getSubscribers(); const active = all.filter(row => row.status !== 'unsubscribed'); const off = all.length - active.length;
+    $('#etk-nl-active-count').textContent = String(active.length);
+    $('#etk-nl-off-count').textContent = String(off);
+    $('#etk-nl-count-pill').textContent = `${all.length} contact${all.length === 1 ? '' : 's'}`;
+    const draft = safeRead(DRAFT_KEY, null); $('#etk-nl-draft-state').textContent = draft?.subject ? 'Enregistré' : 'À préparer';
+    const query = String($('#etk-nl-search')?.value || '').trim().toLowerCase();
+    const rows = all.filter(row => String(row.email).toLowerCase().includes(query)).sort((a,b) => String(b.updatedAt || b.subscribedAt || '').localeCompare(String(a.updatedAt || a.subscribedAt || '')));
+    const root = $('#etk-nl-subscriber-list');
+    if (!rows.length) { root.innerHTML = `<div class="etk-nl-empty">${query ? 'Aucun abonné ne correspond à cette recherche.' : 'Aucun inscrit pour le moment. Les adresses recueillies dans ce navigateur apparaîtront ici.'}</div>`; return; }
+    root.innerHTML = rows.map(row => {
+      const on = row.status !== 'unsubscribed';
+      const actions = (isAdministrator() && !isCommunityManager()) ? '' : `<div class="etk-nl-subscriber-actions"><button type="button" class="etk-nl-small-btn" data-nl-status="${on ? 'off' : 'on'}" data-nl-id="${escapeHtml(row.id)}">${on ? 'Désinscrire' : 'Réactiver'}</button><button type="button" class="etk-nl-small-btn is-danger" data-nl-delete data-nl-id="${escapeHtml(row.id)}" aria-label="Supprimer ${escapeHtml(row.email)}">Supprimer</button></div>`;
+      return `<article class="etk-nl-subscriber"><div><strong>${escapeHtml(row.email)}</strong><small>Inscription : ${escapeHtml(formatDate(row.subscribedAt || row.createdAt))}</small><span class="etk-nl-badge ${on ? '' : 'is-off'}">${on ? 'Abonné actif' : 'Désinscrit'}</span></div>${actions}</article>`;
+    }).join('');
+    renderNewSubscriberNotice();
+  };
+  const updateAccess = () => {
+    const allowed = canManage();
+    const card = $('#user-space-newsletter-settings-card'); if (card) card.hidden = !allowed;
+    const nav = $('#user-space-newsletter-nav'); if (nav) nav.hidden = !allowed;
+    if (!allowed && modal && !modal.hidden) closeManager();
+  };
+  const openManager = trigger => {
+    if (!canManage()) { window.alert('Accès réservé à l’administrateur ou au Community Manager autorisé.'); return; }
+    managerOpener = trigger || document.activeElement;
+    updateAccess(); loadDraft(); renderRoleView(); renderSubscribers(); modal.hidden = false; modal.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden';
+    // Les nouvelles inscriptions restent visibles pendant la consultation et seront marquées comme vues à la fermeture.
+    $('#etk-nl-search')?.focus({preventScroll:true});
+  };
+  const closeManager = () => {
+    if (!modal) return;
+    modal.hidden = true; modal.setAttribute('aria-hidden','true'); document.body.style.overflow = '';
+    const target = managerOpener || $('#user-space-newsletter-settings-open') || $('#user-space-newsletter-nav');
+    managerOpener = null; if(getNewSubscriberRows().length){safeWrite(noticeSeenKeyForCurrentRole(),new Date().toISOString());renderNewSubscriberNotice();updateNotificationBadge();} target?.focus({preventScroll:true});
+  };
+  const defaultDraft = () => { const now = new Date(); const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; return {month,subject:`Le courrier E-tokiana — ${monthLabel(month)}`,preheader:'Les bonnes idées, au bon moment.',body:'Bonjour,\n\nBienvenue dans le courrier mensuel E-tokiana.\n\nCe mois-ci, retrouvez nos inspirations, les actualités de la communauté et les nouveautés à découvrir.\n\n[Ajoutez ici les sélections et liens des articles du mois.]\n\nÀ bientôt,\nL’équipe E-tokiana',link:''}; };
+  const loadDraft = () => { const data = {...defaultDraft(), ...(safeRead(DRAFT_KEY,{}) || {})}; const fields = {'month':'#etk-nl-month','subject':'#etk-nl-subject','preheader':'#etk-nl-preheader','body':'#etk-nl-body-text','link':'#etk-nl-link'}; Object.entries(fields).forEach(([key,selector])=>{ const input=$(selector); if(input) input.value=String(data[key] || ''); }); const preview=$('#etk-nl-preview-box'); if(preview) preview.hidden=true; setStatus(''); };
+  const saveDraft = () => { const data = getComposeData(); if (!data.month || !data.subject || !data.body) { setStatus('Renseignez le mois, l’objet et le contenu avant d’enregistrer.'); return false; } if (!safeWrite(DRAFT_KEY,data)) { setStatus('Enregistrement impossible : stockage du navigateur saturé.'); return false; } renderSubscribers(); setStatus('Brouillon enregistré dans ce navigateur.'); return true; };
+  const newsletterBody = data => [data.preheader, data.body, data.link ? `À découvrir : ${data.link}` : '', 'Pour demander votre désinscription, répondez à ce message en indiquant « DÉSINSCRIPTION ».'].filter(Boolean).join('\n\n');
+  // Détache l'ancien handler de démonstration pour éviter un faux message de succès.
+  if (form) {
+    const replacement = form.cloneNode(true); form.replaceWith(replacement); message = $('#form-message', replacement);
+    replacement.addEventListener('submit', event => {
+      event.preventDefault();
+      const emailInput = $('#email', replacement); const consent = $('#newsletter-consent', replacement); const email = String(emailInput?.value || '').trim().toLowerCase();
+      if (!emailInput?.checkValidity() || !consent?.checked) { replacement.reportValidity(); if (!consent?.checked) consent?.focus(); return; }
+      const rows = getSubscribers(); const existing = rows.find(row => String(row.email).toLowerCase() === email); const now = new Date().toISOString();
+      if (existing && existing.status !== 'unsubscribed') { if (message) message.textContent = 'Cette adresse est déjà inscrite dans cette version du site.'; return; }
+      if (existing) { existing.status='subscribed'; existing.subscribedAt=now; existing.updatedAt=now; existing.consentAt=now; }
+      else rows.push({id:`NL-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`,email,status:'subscribed',source:'site',subscribedAt:now,consentAt:now,createdAt:now,updatedAt:now});
+      if (!safeWrite(SUBSCRIBERS_KEY,rows)) { if (message) message.textContent = 'Enregistrement impossible dans ce navigateur. Réessayez plus tard.'; return; }
+      if (message) message.textContent = 'Inscription enregistrée dans ce navigateur. La centralisation des abonnés et l’envoi mensuel seront activés après connexion à un service partagé.';
+      replacement.reset(); window.dispatchEvent(new CustomEvent('etokiana-newsletter-updated')); updateNotificationBadge();
+    });
+  }
+  $('#user-space-newsletter-settings-open')?.addEventListener('click',event=>openManager(event.currentTarget));
+  $('#user-space-newsletter-nav')?.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); openManager(event.currentTarget); });
+  modal?.querySelectorAll('[data-nl-close]').forEach(button=>button.addEventListener('click',closeManager));
+  modal?.addEventListener('click',event=>{ if(event.target===modal) closeManager(); });
+  document.addEventListener('keydown',event=>{ if(event.key==='Escape' && modal && !modal.hidden) closeManager(); });
+  $('#etk-nl-search')?.addEventListener('input',renderSubscribers);
+  modal?.addEventListener('click',event=>{
+    const statusButton=event.target.closest('[data-nl-status]');
+    if(statusButton){ if(!canManage()){setStatus('Accès refusé.');return;} const rows=getSubscribers(); const row=rows.find(item=>String(item.id)===String(statusButton.dataset.nlId)); if(!row)return; const activate=statusButton.dataset.nlStatus==='on'; row.status=activate?'subscribed':'unsubscribed'; row.updatedAt=new Date().toISOString(); if(activate){row.subscribedAt=row.subscribedAt||row.updatedAt;row.consentAt=row.consentAt||row.updatedAt;} if(safeWrite(SUBSCRIBERS_KEY,rows)){renderSubscribers();setStatus(activate?'Abonnement réactivé dans ce navigateur.':'Adresse désinscrite dans ce navigateur.');}return; }
+    const deleteButton=event.target.closest('[data-nl-delete]');
+    if(deleteButton){if(!canManage())return;const rows=getSubscribers();const row=rows.find(item=>String(item.id)===String(deleteButton.dataset.nlId));if(!row)return;if(!window.confirm(`Supprimer définitivement l’adresse ${row.email} de cette liste locale ?`))return;if(safeWrite(SUBSCRIBERS_KEY,rows.filter(item=>String(item.id)!==String(row.id)))){renderSubscribers();setStatus('Adresse retirée de la liste locale.');}return;}
+    if(event.target.closest('[data-nl-export]')){if(!canManage())return;const rows=getSubscribers();if(!rows.length){setStatus('Aucune adresse à exporter.');return;}const lines=[['E-mail','Statut','Date inscription','Consentement','Source'],...rows.map(row=>[row.email,row.status==='unsubscribed'?'Désinscrit':'Abonné',row.subscribedAt||row.createdAt||'',row.consentAt||'',row.source||'site'])];const csv='\ufeff'+lines.map(line=>line.map(value=>`"${String(value??'').replace(/"/g,'""')}"`).join(';')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download=`abonnements-etokiana-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);setStatus(`${rows.length} adresse(s) exportée(s).`);return;}
+    if(event.target.closest('[data-nl-refresh]')){renderSubscribers();setStatus('Liste actualisée depuis le stockage de ce navigateur.');return;}
+    if(event.target.closest('[data-nl-preview]')){if(!canManage())return;const data=getComposeData();if(!data.subject||!data.body){setStatus('Renseignez au minimum l’objet et le contenu pour afficher l’aperçu.');return;}const box=$('#etk-nl-preview-box');box.textContent=`OBJET : ${data.subject}\n${data.preheader ? `APERÇU : ${data.preheader}\n` : ''}\n${newsletterBody(data)}`;box.hidden=false;setStatus('Aperçu du courrier (version texte).');return;}
+    if(event.target.closest('[data-nl-prepare]')){if(!canManage())return;const data=getComposeData();if(!data.subject||!data.body||!data.month){setStatus('Renseignez le mois, l’objet et le contenu du courrier.');return;}const addresses=activeSubscribers().map(row=>row.email);if(!addresses.length){setStatus('Aucun abonné actif dans cette liste locale.');return;}if(addresses.length>25){setStatus('La liste contient plus de 25 adresses : exportez le CSV puis utilisez votre outil de messagerie pour éviter une URL trop longue.');return;}const subject=data.subject;const body=newsletterBody(data);const href=`mailto:?bcc=${encodeURIComponent(addresses.join(','))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;const a=document.createElement('a');a.href=href;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setStatus(`Brouillon ouvert dans votre messagerie avec ${addresses.length} destinataire(s) en copie cachée. Vérifiez le contenu puis cliquez vous-même sur Envoyer.`);return;}
+  });
+  $('#etk-nl-compose-form')?.addEventListener('submit',event=>{event.preventDefault();if(!canManage()){setStatus('Accès réservé à l’administrateur ou au Community Manager.');return;}saveDraft();});
+  $('#etk-nl-month')?.addEventListener('change',event=>{const subject=$('#etk-nl-subject');if(subject&&(!subject.value.trim()||subject.dataset.autoMonth==='true')){subject.value=`Le courrier E-tokiana — ${monthLabel(event.target.value)}`;subject.dataset.autoMonth='true';}});
+  const monthField=$('#etk-nl-month');const subjectField=$('#etk-nl-subject');subjectField?.addEventListener('input',()=>{subjectField.dataset.autoMonth='false';});
+  if(monthField && !monthField.value){const now=new Date();monthField.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;}
+  if(subjectField&&!subjectField.value)subjectField.value=`Le courrier E-tokiana — ${monthLabel(monthField?.value)}`;
+  ['storage','etokiana-user-space-rendered','etokiana:auth-change','etokiana-staff-changed','etokiana-users-changed','etokiana-newsletter-updated'].forEach(name=>window.addEventListener(name,()=>{updateAccess();updateNotificationBadge();if(!modal?.hidden&&canManage()){renderRoleView();renderSubscribers();}}));
+  document.addEventListener('DOMContentLoaded',()=>{updateAccess();updateNotificationBadge();});
+  window.addEventListener('pageshow',()=>{updateAccess();updateNotificationBadge();});
+  const spaceModal = $('#user-space-modal');
+  if (spaceModal && typeof MutationObserver !== 'undefined') new MutationObserver(updateAccess).observe(spaceModal,{attributes:true,attributeFilter:['hidden','aria-hidden','class']});
+  window.setTimeout(()=>{updateAccess();updateNotificationBadge();},0); window.setTimeout(()=>{updateAccess();updateNotificationBadge();},250); updateAccess(); updateNotificationBadge();
+})();
+</script>
 
 </body>
 </html>
