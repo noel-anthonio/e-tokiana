@@ -978,6 +978,105 @@ let cart = JSON.parse(
     "[]",
 );
 function etokianaFavoriteAccountKey(user) { return String(user?.id || user?.email || '').trim().toLowerCase(); }
+// Identifiants uniques des comptes : attribués une seule fois et conservés dans le navigateur.
+// Les identifiants métier déjà utilisés (ex. demo-seller) sont préservés pour ne pas casser les références.
+function etokianaCreateAccountId(reservedExtra = []) {
+  let accounts = [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem("etokiana-users") || "[]");
+    if (Array.isArray(parsed)) accounts = parsed.filter(Boolean);
+  } catch (_) {}
+  const normId = (value) => String(value ?? "").trim().toLocaleLowerCase("fr-FR");
+  const reserved = new Set([
+    "demo-client", "demo-seller", "admin-demo",
+    ...accounts.map((account) => normId(account.id)).filter(Boolean),
+    ...Array.from(reservedExtra || []).map(normId).filter(Boolean),
+  ]);
+  try {
+    const session = JSON.parse(localStorage.getItem("etokiana-user") || "null");
+    if (session?.id) reserved.add(normId(session.id));
+  } catch (_) {}
+  let sequence = Number.parseInt(localStorage.getItem("etokiana-account-id-sequence") || "0", 10) || 0;
+  reserved.forEach((value) => {
+    const match = String(value).match(/^etk-u-(\d+)$/i);
+    if (match) sequence = Math.max(sequence, Number(match[1]) || 0);
+  });
+  let candidate = "";
+  do {
+    sequence += 1;
+    candidate = `ETK-U-${String(sequence).padStart(6, "0")}`;
+  } while (reserved.has(normId(candidate)));
+  try { localStorage.setItem("etokiana-account-id-sequence", String(sequence)); } catch (_) {}
+  return candidate;
+}
+window.createEtokianaAccountId = (reservedExtra = []) => etokianaCreateAccountId(reservedExtra);
+
+(function migrateAccountIdentifiers() {
+  const normEmail = (value) => String(value ?? "").trim().toLocaleLowerCase("fr-FR");
+  const normId = (value) => String(value ?? "").trim().toLocaleLowerCase("fr-FR");
+  let users = [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem("etokiana-users") || "[]");
+    users = Array.isArray(parsed) ? parsed.filter(Boolean).map((user) => ({ ...user })) : [];
+  } catch (_) { users = []; }
+  const builtInIdOwners = {
+    "demo-client": "client@etokiana.fr",
+    "demo-seller": "vendeur@etokiana.fr",
+    "admin-demo": "admin@etokiana.fr",
+  };
+  const reserved = new Set([
+    ...Object.keys(builtInIdOwners),
+    ...users.map((user) => normId(user.id)).filter(Boolean),
+  ]);
+  let changed = false;
+  const seen = new Set();
+  users = users.map((user) => {
+    const existing = String(user.id ?? "").trim();
+    const key = normId(existing);
+    const email = normEmail(user.email || user.username);
+    const idBelongsToDifferentBuiltIn = Boolean(builtInIdOwners[key] && builtInIdOwners[key] !== email);
+    if (existing && !seen.has(key) && !idBelongsToDifferentBuiltIn) {
+      seen.add(key);
+      return user;
+    }
+    const id = etokianaCreateAccountId(reserved);
+    user.id = id;
+    reserved.add(normId(id));
+    seen.add(normId(id));
+    changed = true;
+    return user;
+  });
+  if (changed) {
+    try { localStorage.setItem("etokiana-users", JSON.stringify(users)); } catch (error) { console.warn("Impossible d’enregistrer les identifiants utilisateurs", error); }
+  }
+
+  // Aligne la session ouverte sur l'identifiant du compte enregistré.
+  try {
+    const session = JSON.parse(localStorage.getItem("etokiana-user") || "null");
+    if (session && typeof session === "object") {
+      const email = normEmail(session.email || session.username);
+      const stored = users.find((user) => normEmail(user.email || user.username) === email && email);
+      let nextId = stored?.id || String(session.id ?? "").trim();
+      const idOwner = nextId && users.find((user) => normId(user.id) === normId(nextId) && normEmail(user.email || user.username) !== email);
+      const builtInOwners = { "admin-demo":"admin@etokiana.fr", "demo-client":"client@etokiana.fr", "demo-seller":"vendeur@etokiana.fr" };
+      const invalidBuiltInId = Boolean(builtInOwners[normId(nextId)] && builtInOwners[normId(nextId)] !== email);
+      if (!nextId || idOwner || invalidBuiltInId) {
+        const builtInId = ({
+          "admin@etokiana.fr": "admin-demo",
+          "client@etokiana.fr": "demo-client",
+          "vendeur@etokiana.fr": "demo-seller",
+        })[email];
+        const builtInIsFree = builtInId && !users.some((user) => normId(user.id) === normId(builtInId) && normEmail(user.email || user.username) !== email);
+        nextId = builtInIsFree ? builtInId : etokianaCreateAccountId(reserved);
+      }
+      if (session.id !== nextId) {
+        session.id = nextId;
+        localStorage.setItem("etokiana-user", JSON.stringify(session));
+      }
+    }
+  } catch (error) { console.warn("Migration de l’identifiant de session impossible", error); }
+})();
+
 function etokianaReadFavoritesForUser(user, migrateLegacy = false) {
   try {
     const map = JSON.parse(localStorage.getItem('etokiana-favorites-by-user') || '{}');
@@ -3874,11 +3973,13 @@ document.querySelector("#login-form").addEventListener("submit", (event) => {
       password: "client123",
       role: "client",
       name: "Alex Martin",
+      id: "demo-client",
     },
     "admin@etokiana.fr": {
       password: "admin123",
       role: "owner",
       name: "E-Tokiana (admin)",
+      id: "admin-demo",
     },
     "vendeur@etokiana.fr": {
       password: "vendeur123",
@@ -3929,7 +4030,7 @@ document.querySelector("#login-form").addEventListener("submit", (event) => {
 document.querySelector("#signup-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const user = {
-    id: `seller-${Date.now()}`,
+    id: window.createEtokianaAccountId?.() || `seller-${Date.now()}`,
     name: document.querySelector("#signup-name").value.trim(),
     phone: document.querySelector("#signup-phone").value.trim(),
     email: document.querySelector("#signup-email").value.trim().toLowerCase(),

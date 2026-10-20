@@ -10294,7 +10294,7 @@
               name,
           );
           const accountId = displayValue(
-            user?.username || user?.userName || user?.login || user?.id,
+            user?.id || user?.username || user?.userName || user?.login,
           );
           const phone = displayValue(
             user?.phone ||
@@ -11918,11 +11918,11 @@
               table(
                 ["Collaborateur", "Rôle / droits", "Présence", "Statut"],
                 staffDirectoryEntries.map((m) => {
-                  const role = `STAFF · ${m.staffRole || "Équipe"}`;
+                  const role = m.staffRole || "Équipe";
                   const presence = m.invitationStatus === "pending" ? "Invitation en attente" : staffIsOnline(m) ? "En ligne" : userSpacePresence[m.email] ? "Vu récemment" : "Jamais connecté";
                   return [
-                    [m.name || "Collaborateur", m.email],
-                    role,
+                    [esc(m.name || "Collaborateur"), `${esc(m.email || "E-mail non renseigné")} · ID : ${esc(m.id || m.invitationReference || "En attente")}`],
+                    esc(role),
                     presence,
                     badge(m.invitationStatus === "pending" ? "À activer" : m.active === false ? "Suspendu" : "Actif"),
                   ];
@@ -13151,8 +13151,8 @@
   const readAccounts = () => readJson('etokiana-users', []).filter(user => user && String(user.role || '').toLowerCase() === 'staff');
   const readInvitations = () => readJson(storageKey, []).filter(item => item && item.email);
   const getPresence = (email) => { const presence = readJson('etokiana-presence', {}); const raw = presence[String(email || '').toLowerCase()] ?? presence[email]; const time = Number(raw); if (!Number.isFinite(time) || time <= 0) return 'Pas encore connecté'; const age = Date.now() - time; if (age < 60000) return 'En ligne'; if (age < 24 * 60 * 60 * 1000) return 'Vu aujourd’hui'; return `Vu le ${fmtDate(time)}`; };
-  const normalizeAccount = (item) => { const key = window.EtoStaffRoles.resolveKey(item); const status = item.invitationStatus === 'pending' ? 'pending' : item.active === false ? 'suspended' : 'active'; return { ...item, _type:'account', _id:String(item.id ?? item.email), _status:status, _name:item.name || 'Collaborateur', _role:`STAFF · ${item.staffRole || catalog[key].label}`, _roleKey:key, _permissions:window.EtoStaffRoles.resolvePermissions(item), _presence:getPresence(item.email), _created:item.createdAt || item.joinedAt, _email:item.email || 'E-mail non renseigné' }; };
-  const normalizeInvitation = (item) => { const key = window.EtoStaffRoles.resolveKey(item); return { ...item, _type:'invitation', _id:String(item.id), _status:'pending', _name:item.name || 'Membre à configurer', _role:`STAFF · ${item.staffRole || catalog[key].label}`, _roleKey:key, _permissions:window.EtoStaffRoles.resolvePermissions(item), _presence:'Invitation en attente', _created:item.createdAt || item.invitedAt, _email:item.email || 'E-mail non renseigné' }; };
+  const normalizeAccount = (item) => { const key = window.EtoStaffRoles.resolveKey(item); const status = item.invitationStatus === 'pending' ? 'pending' : item.active === false ? 'suspended' : 'active'; return { ...item, _type:'account', _id:String(item.id ?? item.email), _status:status, _name:item.name || 'Collaborateur', _role:item.staffRole || catalog[key].label, _roleKey:key, _permissions:window.EtoStaffRoles.resolvePermissions(item), _presence:getPresence(item.email), _created:item.createdAt || item.joinedAt, _email:item.email || 'E-mail non renseigné' }; };
+  const normalizeInvitation = (item) => { const key = window.EtoStaffRoles.resolveKey(item); return { ...item, _type:'invitation', _id:String(item.id), _status:'pending', _name:item.name || 'Membre à configurer', _role:item.staffRole || catalog[key].label, _roleKey:key, _permissions:window.EtoStaffRoles.resolvePermissions(item), _presence:'Invitation en attente', _created:item.createdAt || item.invitedAt, _email:item.email || 'E-mail non renseigné' }; };
   const getAll = () => [...readAccounts().map(normalizeAccount), ...readInvitations().map(normalizeInvitation)];
   const initials = (name) => String(name || 'Équipe').trim().split(/\s+/).filter(Boolean).slice(0,2).map(part => part[0]).join('').toUpperCase() || 'ET';
   const statusLabel = (status) => status === 'active' ? 'Activé' : status === 'suspended' ? 'Suspendu' : 'À activer';
@@ -13185,7 +13185,7 @@
       const resend = item._type === 'invitation' ? '<button type="button" class="staff-member-resend" data-staff-resend><i class="bi bi-envelope-arrow-up" aria-hidden="true"></i> Renvoyer</button>' : '';
       const accessAction = item._type === 'account' ? `<button type="button" class="staff-member-status-action" data-staff-action title="${esc(actionTitle)}"><i class="bi ${actionIcon}" aria-hidden="true"></i> ${actionLabel}</button>` : '';
       return `<article class="staff-member-card" data-staff-card data-staff-type="${item._type}" data-staff-id="${esc(item._id)}">
-        <div class="staff-member-top"><div class="staff-member-identity"><span class="staff-member-avatar">${esc(initials(item._name))}</span><div class="staff-member-name"><strong>${esc(item._name)}</strong><small>${esc(item._email)}</small></div></div><span class="staff-member-status ${status === 'active' ? 'is-active' : status === 'suspended' ? 'is-suspended' : 'is-pending'}">${statusLabel(status)}</span></div>
+        <div class="staff-member-top"><div class="staff-member-identity"><span class="staff-member-avatar">${esc(initials(item._name))}</span><div class="staff-member-name"><strong>${esc(item._name)}</strong><small>${esc(item._email)}</small><small class="staff-member-id">ID : ${esc(item._id)}</small></div></div><span class="staff-member-status ${status === 'active' ? 'is-active' : status === 'suspended' ? 'is-suspended' : 'is-pending'}">${statusLabel(status)}</span></div>
         <div class="staff-member-meta"><div><small>RÔLE</small><strong>${esc(item._role)}</strong></div><div><small>PRÉSENCE / ACCÈS</small><strong>${esc(item._presence)}</strong></div></div>
         <div class="staff-member-actions"><button type="button" data-staff-detail aria-expanded="false"><i class="bi bi-card-text" aria-hidden="true"></i> Voir la fiche</button><button type="button" data-staff-edit><i class="bi bi-pencil-square" aria-hidden="true"></i> Modifier</button>${resend}${accessAction}<button type="button" data-staff-delete><i class="bi bi-trash3" aria-hidden="true"></i> Supprimer</button></div>
         <div class="staff-member-details" hidden><p>${esc(detail)}</p>${roleEditor}<strong style="display:block;font-size:9px;color:#566b54;margin:0 0 6px">Droits associés au rôle</strong><div class="staff-detail-permissions">${chips || '<span>Aucun droit enregistré</span>'}</div><small>Enregistré le ${esc(fmtDate(item._created))} · ${item._type === 'invitation' ? 'référence ' + esc(item.invitationReference || item._id) : 'compte personnel'}</small></div>
@@ -13612,7 +13612,7 @@
     const users=read('etokiana-users',[]);
     if(users.some(user=>String(user.email||'').trim().toLowerCase()===email)){showError('Un compte existe déjà pour cette adresse. Contactez l’administrateur.');return;}
     const account={
-      id:`staff-${Date.now()}`, name:invitation.name||email.split('@')[0], email, password,
+      id:typeof window.createEtokianaAccountId === 'function' ? window.createEtokianaAccountId() : `staff-${Date.now()}`, name:invitation.name||email.split('@')[0], email, password,
       role:'staff', active:true, status:'active',
       staffRole:invitation.staffRole||'Observateur · lecture seule',
       staffRoleKey:invitation.staffRoleKey||'observer',
@@ -13723,6 +13723,9 @@
   .admin-account-identity div{min-width:0}
   .admin-account-identity strong{display:block;color:#263b2c;font-size:11px;overflow-wrap:anywhere}
   .admin-account-identity small{display:block;margin-top:3px;color:#868b80;font-size:9px;overflow-wrap:anywhere}
+  .admin-account-identity .admin-account-id{color:#52745a;font-family:"DM Mono",monospace;font-size:8px;letter-spacing:.015em}
+  #admin-modal .staff-member-id{color:#52745a;font-family:"DM Mono",monospace;font-size:8px;letter-spacing:.015em}
+  .admin-account-identity .admin-account-id{color:#52745a;font-family:"DM Mono",monospace;font-size:8px;letter-spacing:.015em}
   .admin-account-role{color:#697567;font-size:10px;font-weight:750}
   .admin-account-state{display:inline-flex;align-items:center;gap:6px;color:#697567;font-size:10px;font-weight:800;white-space:nowrap}
   .admin-account-state:before{content:"";width:7px;height:7px;border-radius:50%;background:#6b9a73}
@@ -13817,7 +13820,7 @@
       const staffKey = String(user?.staffRoleKey || '').toLowerCase();
       const staffName = String(user?.staffRole || '').trim();
       const roleName = staffName || window.EtoStaffRoles?.catalog?.[staffKey]?.label || 'Membre du personnel';
-      return `STAFF · ${roleName}`;
+      return roleName;
     }
     return ({admin:'Administrateur',seller:'Vendeur',client:'Client',provider:'Prestataire',editor:'Rédacteur'})[key] || 'Utilisateur';
   };
@@ -14035,7 +14038,7 @@
           state !== 'blocked' ? `<button type="button" data-account-action="block" data-account-id="${safe(personKey(user))}"><i class="bi bi-slash-circle" aria-hidden="true"></i> Bloquer</button>` : '',
           state !== 'deactivated' ? `<button type="button" data-account-action="deactivate" data-account-id="${safe(personKey(user))}"><i class="bi bi-toggle-off" aria-hidden="true"></i> Désactiver</button>` : ''
         ].filter(Boolean).join('');
-        return `<article class="admin-account-row" data-account-row data-account-type="${safe(type)}"><label class="admin-account-select" title="Sélectionner ${safe(user.name || user.email || 'cet utilisateur')}"><input type="checkbox" data-account-select data-account-id="${safe(personKey(user))}" aria-label="Sélectionner ${safe(user.name || user.email || 'cet utilisateur')}" ${locked ? 'disabled' : ''}><span aria-hidden="true"></span></label><div class="admin-account-identity"><span class="admin-account-avatar">${safe(initials)}</span><div><strong>${safe(user.name || user.fullName || 'Utilisateur')}</strong><small>${safe(user.email || 'E-mail non renseigné')}</small></div></div><span class="admin-account-type-cell"><b class="admin-account-type-badge is-${safe(type)}">${safe(accountTypeLabel(user))}</b></span><span class="admin-account-role">${safe(roleFunctionLabel(user))}</span><span class="admin-account-state" data-state="${safe(state)}">${safe(statusLabel(state))}</span><div class="admin-account-actions">${actions}</div></article>`;
+        return `<article class="admin-account-row" data-account-row data-account-type="${safe(type)}"><label class="admin-account-select" title="Sélectionner ${safe(user.name || user.email || 'cet utilisateur')}"><input type="checkbox" data-account-select data-account-id="${safe(personKey(user))}" aria-label="Sélectionner ${safe(user.name || user.email || 'cet utilisateur')}" ${locked ? 'disabled' : ''}><span aria-hidden="true"></span></label><div class="admin-account-identity"><span class="admin-account-avatar">${safe(initials)}</span><div><strong>${safe(user.name || user.fullName || 'Utilisateur')}</strong><small>${safe(user.email || 'E-mail non renseigné')}</small><small class="admin-account-id">ID : ${safe(user.id || user.username || 'Non attribué')}</small></div></div><span class="admin-account-type-cell"><b class="admin-account-type-badge is-${safe(type)}">${safe(accountTypeLabel(user))}</b></span><span class="admin-account-role">${safe(roleFunctionLabel(user))}</span><span class="admin-account-state" data-state="${safe(state)}">${safe(statusLabel(state))}</span><div class="admin-account-actions">${actions}</div></article>`;
       }).join('');
       syncAccountBulkUI(management);
     });
