@@ -1791,9 +1791,7 @@ function getCataloguePriceBounds() {
 }
 
 function isCatalogueProductAvailable(product) {
-  const stock = productStock(product);
-  const inactive = product?.active === false || String(product?.status || "").toLowerCase() === "inactive";
-  return !inactive && !(stock !== null && stock <= 0);
+  return productStockState(product).canPurchase;
 }
 
 function filteredProducts() {
@@ -1933,6 +1931,8 @@ function renderProducts() {
   productGrid.innerHTML = visibleProducts
     .map((product) => {
       const cardMaterial = productCardMaterial(product);
+      const stockState = productStockState(product);
+      const unavailable = !stockState.canPurchase;
       return `
     <article class="product-card">
       <div class="product-image-wrap">
@@ -1947,14 +1947,15 @@ function renderProducts() {
           <h3 class="product-image-name">${product.name}</h3>
           <span class="product-image-reference">Réf. ${window.getProductReference(product)}</span>
           <span class="product-image-publisher">Publié par : <strong>${trackingEscape(productCreatorName(product))}</strong></span>
+          <span class="product-image-stock product-image-stock-${stockState.key}">${stockState.label}</span>
           <p class="product-image-price">${product.discount ? `<del>${productPriceMarkup(product.price)}</del>` : ""}<strong>${productPriceMarkup(effectivePrice(product))}</strong>${product.discount ? `<span class="product-image-discount">-${product.discount}%</span>` : ""}</p>
         </div>
         <div class="product-image-actions">
           <button class="btn btn-light product-image-action" type="button" data-details="${product.id}" title="Voir les détails de ${product.name}">
             <i class="bi bi-eye" aria-hidden="true"></i><span>Détails</span>
           </button>
-          <button class="btn btn-dark product-image-action product-image-action-primary" type="button" data-add="${product.id}" title="Ajouter ${product.name} au panier">
-            <i class="bi bi-bag-plus" aria-hidden="true"></i><span>Ajouter</span>
+          <button class="btn btn-dark product-image-action product-image-action-primary ${unavailable ? "is-unavailable" : ""}" type="button" data-add="${product.id}" aria-disabled="${unavailable}" title="${stockState.key === "out" ? `Stock épuisé pour ${product.name}` : stockState.key === "inactive" ? `Produit indisponible : ${product.name}` : stockState.key === "unknown" ? `Stock à renseigner pour ${product.name}` : `Ajouter ${product.name} au panier`}">
+            <i class="bi ${unavailable ? "bi-exclamation-circle" : "bi-bag-plus"}" aria-hidden="true"></i><span>${stockState.key === "out" ? "Épuisé" : stockState.key === "inactive" ? "Indisponible" : stockState.key === "unknown" ? "Stock à confirmer" : "Ajouter"}</span>
           </button>
         </div>
       </div>
@@ -1963,6 +1964,29 @@ function renderProducts() {
     .join("");
 }
 
+window.refreshEtokianaCatalogue = () => {
+  let stored = [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem("etokiana-products") || "[]");
+    if (Array.isArray(parsed)) stored = parsed.filter((item) => item && typeof item === "object");
+  } catch (_) {}
+  const currentById = new Map(products.map((item) => [String(item.id), item]));
+  // Le stockage est la source de vérité : cela synchronise les stocks et retire
+  // aussi les produits supprimés dans un autre onglet.
+  products = stored.map((item) => ({ ...(currentById.get(String(item.id)) || {}), ...item }));
+  renderProducts();
+  renderCart();
+};
+window.addEventListener("storage", (event) => {
+  if (event.key === "etokiana-products") window.refreshEtokianaCatalogue?.();
+  if (event.key === "etokiana-cart") {
+    try {
+      const storedCart = JSON.parse(event.newValue || "[]");
+      if (Array.isArray(storedCart)) cart = storedCart;
+      renderCart();
+    } catch (_) {}
+  }
+});
 function renderCart() {
   const count = cart.reduce((total, item) => total + item.quantity, 0);
   document
@@ -1999,6 +2023,59 @@ function renderCart() {
 function saveCart() {
   localStorage.setItem("etokiana-cart", JSON.stringify(cart));
   renderCart();
+}
+function reservedQuantityForCartItem(item) {
+  const quantity = Math.max(0, Math.floor(Number(item?.quantity) || 0));
+  const reserved = Math.max(0, Math.floor(Number(item?.stockReservedQty) || 0));
+  return Math.min(quantity, reserved);
+}
+function persistReservedInventoryChanges() {
+  localStorage.setItem("etokiana-products", JSON.stringify(products));
+  try { window.dispatchEvent(new CustomEvent("etokiana-stock-updated")); } catch (_) {}
+  try { renderProducts(); } catch (error) { console.warn("Mise à jour du catalogue impossible", error); }
+  try { if (typeof window.renderPremiumUserSpace === "function") window.renderPremiumUserSpace(); } catch (error) { console.warn("Mise à jour de l’espace utilisateur impossible", error); }
+}
+function restoreProductStock(productId, quantity) {
+  const units = Math.max(0, Math.floor(Number(quantity) || 0));
+  if (!units) return 0;
+  const product = products.find((candidate) => String(candidate.id) === String(productId));
+  if (!product) return 0;
+  const currentStock = productStock(product);
+  // Une réservation a forcément été faite à partir d'un stock numérique.
+  // Si le champ a été effacé depuis, la quantité libérée redevient le stock connu.
+  product.stock = (currentStock === null ? 0 : currentStock) + units;
+  return units;
+}
+function initializeCartStockReservations() {
+  let cartChanged = false;
+  let productsChanged = false;
+  const pendingByProduct = new Map();
+  cart.forEach((item) => {
+    const quantity = Math.max(0, Math.floor(Number(item?.quantity) || 0));
+    if (!item || item.stockReservedQty !== undefined) return;
+    const key = String(item.id);
+    if (!pendingByProduct.has(key)) pendingByProduct.set(key, []);
+    pendingByProduct.get(key).push({ item, quantity });
+  });
+  pendingByProduct.forEach((entries, productId) => {
+    const product = products.find((candidate) => String(candidate.id) === productId);
+    const state = product ? productStockState(product) : null;
+    const stock = product ? productStock(product) : null;
+    const totalNeeded = entries.reduce((sum, entry) => sum + entry.quantity, 0);
+    const canReserveAll = Boolean(product && state && state.key !== "inactive" && stock !== null && stock >= totalNeeded);
+    if (canReserveAll && totalNeeded > 0) {
+      product.stock = stock - totalNeeded;
+      productsChanged = true;
+      entries.forEach(({ item, quantity }) => { item.stockReservedQty = quantity; });
+    } else {
+      // Ancien panier non réservé : on le conserve, mais la quantité manquante
+      // sera réservée à la prochaine validation uniquement si le stock le permet.
+      entries.forEach(({ item }) => { item.stockReservedQty = 0; });
+    }
+    cartChanged = true;
+  });
+  if (cartChanged) localStorage.setItem("etokiana-cart", JSON.stringify(cart));
+  if (productsChanged) localStorage.setItem("etokiana-products", JSON.stringify(products));
 }
 function cartSubtotal() {
   return cart.reduce(
@@ -2037,19 +2114,64 @@ function cartLineKey(productId, color = "", size = "") {
   return `${String(productId)}::${encodeURIComponent(String(color || ""))}::${encodeURIComponent(String(size || ""))}`;
 }
 function addToCart(product, quantity = 1, options = {}) {
-  if (!product) return;
+  if (!product) return false;
+  const currentProduct = products.find((item) => String(item.id) === String(product.id));
+  if (!currentProduct) {
+    showToast("Ce produit n’est plus disponible dans le catalogue. Actualisez la page avant de continuer.", "warning");
+    return false;
+  }
+  const stockState = productStockState(currentProduct);
+  if (!stockState.canPurchase) {
+    showProductStockAlert(currentProduct, stockState);
+    return false;
+  }
+  if (!ensureSignedInForPurchase()) return false;
+  const safeQuantity = Math.max(1, Number.parseInt(quantity, 10) || 1);
   const selectedColor = String(options.color || "");
   const selectedSize = String(options.size || "");
-  const cartLineId = cartLineKey(product.id, selectedColor, selectedSize);
+  const cartLineId = cartLineKey(currentProduct.id, selectedColor, selectedSize);
   const existing = cart.find((item) => (item.cartLineId || cartLineKey(item.id, item.selectedColor, item.selectedSize)) === cartLineId);
-  if (existing) existing.quantity += quantity;
-  else cart.push({ ...product, quantity, selectedColor, selectedSize, cartLineId });
+  const stock = productStock(currentProduct);
+  if (stock === null) {
+    showProductStockAlert(currentProduct, stockState);
+    return false;
+  }
+  // Réserver également toute quantité encore présente dans un panier ancien
+  // mais non marquée comme réservée, puis réserver la nouvelle quantité.
+  const relatedLines = cart.filter((item) => String(item.id) === String(currentProduct.id));
+  const pendingQuantity = relatedLines.reduce((sum, item) => {
+    const qty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+    return sum + Math.max(0, qty - reservedQuantityForCartItem(item));
+  }, 0);
+  const quantityToReserve = pendingQuantity + safeQuantity;
+  if (quantityToReserve > stock) {
+    showToast(`Stock insuffisant pour « ${currentProduct.name} » : ${stock} unité(s) encore disponible(s), ${quantityToReserve} nécessaire(s) pour ce panier.`, "warning");
+    return false;
+  }
+  currentProduct.stock = stock - quantityToReserve;
+  relatedLines.forEach((item) => { item.stockReservedQty = Math.max(0, Math.floor(Number(item.quantity) || 0)); });
+  if (existing) {
+    existing.quantity = (Number(existing.quantity) || 0) + safeQuantity;
+    existing.stockReservedQty = existing.quantity;
+  } else {
+    cart.push({ ...currentProduct, quantity: safeQuantity, selectedColor, selectedSize, cartLineId, stockReservedQty: safeQuantity });
+  }
   saveCart();
+  persistReservedInventoryChanges();
+  return true;
 }
-function showToast(message) {
+let toastTimer = null;
+function showToast(message, variant = "success") {
   toast.textContent = message;
+  toast.classList.toggle("is-warning", variant === "warning");
   toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 2200);
+  toast.setAttribute("role", variant === "warning" ? "alert" : "status");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove("show", "is-warning");
+    toast.setAttribute("role", "status");
+    toastTimer = null;
+  }, variant === "warning" ? 3800 : 2200);
 }
 function openCart() {
   cartDrawer.classList.add("open");
@@ -2530,7 +2652,7 @@ function renderSellerAndOwnerViews() {
   if (sellerId && productPanel) {
     const table = productPanel.querySelector(".admin-table");
     if (table)
-      table.innerHTML = `<div class="admin-table-head"><span>Produit</span><span>Prix</span><span>Remise</span><span>Stock</span></div>${visibleProducts.map((product) => `<div class="admin-table-row"><span><strong>${product.name}</strong><small>${product.category}</small></span><span>${euro(effectivePrice(product))}</span><span>${product.discount ? `-${product.discount}%` : "Aucune"}</span><span class="stock-value">Disponible</span></div>`).join("") || '<p class="modal-muted">Vous n’avez pas encore publié de produit.</p>'}`;
+      table.innerHTML = `<div class="admin-table-head"><span>Produit</span><span>Prix</span><span>Remise</span><span>Stock / état</span></div>${visibleProducts.map((product) => { const state = productStockState(product); const quantity = state.stock === null ? "" : ` · ${state.stock} unité(s)`; return `<div class="admin-table-row"><span><strong>${product.name}</strong><small>${product.category}</small></span><span>${euro(effectivePrice(product))}</span><span>${product.discount ? `-${product.discount}%` : "Aucune"}</span><span class="stock-value stock-value-${state.key}">${state.label}${quantity}</span></div>`; }).join("") || '<p class="modal-muted">Vous n’avez pas encore publié de produit.</p>'}`;
   }
   let sellerTab = nav.querySelector('[data-admin-view="seller-sales"]');
   if (!sellerTab) {
@@ -2643,57 +2765,168 @@ function isEditorUser(user = currentUser) {
   return ["redac", "rédac", "editor", "writer", "journalist", "content"].some((key) => role.includes(key));
 }
 function productStock(product) {
-  if (Number.isFinite(Number(product?.stock)) && product.stock !== "" && product.stock != null)
-    return Number(product.stock);
-  const match = String(product?.material || "").match(/(\d+)\s*unités?/i);
-  return match ? Number(match[1]) : null;
+  // Le champ numérique `stock` est la source de vérité. Ne pas déduire la
+  // quantité du champ `material` ou d'un ancien libellé : ils peuvent être périmés.
+  const rawStock = product?.stock;
+  if (rawStock === null || rawStock === undefined || String(rawStock).trim() === "") return null;
+  const numericStock = Number(rawStock);
+  if (!Number.isFinite(numericStock) || numericStock < 0) return null;
+  // Le stock représente des unités entières, pas des fractions d'article.
+  return Math.floor(numericStock);
+}
+function productStockState(product) {
+  const stock = productStock(product);
+  const status = String(product?.status || "").trim().toLowerCase();
+  const inactive = product?.active === false || ["inactive", "inactif", "indisponible", "suspendu", "suspended"].includes(status);
+  // Le statut est recalculé à partir de la quantité actuelle de ce produit,
+  // sans faire confiance à un libellé d'état qui peut être resté ancien.
+  if (stock !== null && stock <= 0) return { key: "out", label: "Épuisé", stock, canPurchase: false };
+  if (inactive) return { key: "inactive", label: "Indisponible", stock, canPurchase: false };
+  if (stock === null) return { key: "unknown", label: "Stock non renseigné", stock: null, canPurchase: false };
+  if (stock <= 5) return { key: "low", label: "Stock faible", stock, canPurchase: true };
+  return { key: "ok", label: "Disponible", stock, canPurchase: true };
+}
+window.getEtokianaProductStockState = (product) => ({ ...productStockState(product) });
+function restockCancelledOrderInventory(order) {
+  if (!order || order.inventoryDeductedAtCart !== true || order.inventoryRestockedAt) return false;
+  const quantitiesByProduct = new Map();
+  (order.items || []).forEach((item) => {
+    const key = String(item.id);
+    quantitiesByProduct.set(key, (quantitiesByProduct.get(key) || 0) + Math.max(0, Math.floor(Number(item.quantity) || 0)));
+  });
+  let restored = false;
+  quantitiesByProduct.forEach((quantity, productId) => {
+    if (quantity > 0 && restoreProductStock(productId, quantity) > 0) restored = true;
+  });
+  order.inventoryRestockedAt = new Date().toISOString();
+  if (restored) persistReservedInventoryChanges();
+  return restored;
+}
+function showProductStockAlert(product, state = productStockState(product)) {
+  const name = String(product?.name || "Ce produit");
+  if (state.key === "out") {
+    showToast(`Stock épuisé : « ${name} » n’est actuellement plus disponible à l’achat.`, "warning");
+    return;
+  }
+  if (state.key === "unknown") {
+    showToast(`Le stock de « ${name} » n’est pas renseigné. L’achat est temporairement indisponible.`, "warning");
+    return;
+  }
+  if (!state.canPurchase) {
+    showToast(`« ${name} » est actuellement indisponible à l’achat.`, "warning");
+  }
+}
+function ensureSignedInForPurchase() {
+  try {
+    const storedUser = JSON.parse(localStorage.getItem("etokiana-user") || "null");
+    if (storedUser && typeof storedUser === "object" && !Array.isArray(storedUser)
+      && (storedUser.id || storedUser.email || storedUser.name || storedUser.role)) {
+      currentUser = storedUser;
+    } else {
+      currentUser = null;
+    }
+  } catch (_) {
+    currentUser = null;
+  }
+  if (currentUser) return true;
+  showToast("Connectez-vous à votre compte pour ajouter un produit au panier.", "warning");
+  openModal(loginModal);
+  return false;
+}
+function validateCartStock() {
+  const quantitiesByProduct = new Map();
+  cart.forEach((item) => {
+    const key = String(item.id);
+    if (!quantitiesByProduct.has(key)) quantitiesByProduct.set(key, []);
+    quantitiesByProduct.get(key).push(item);
+  });
+  const reservationsToMake = [];
+  // Première passe : vérifier tout le panier sans modifier le stock. Ainsi, un
+  // échec sur un produit ne laisse pas les précédents partiellement débités.
+  for (const [productId, lines] of quantitiesByProduct) {
+    const currentProduct = products.find((product) => String(product.id) === productId);
+    if (!currentProduct) {
+      showToast("Un article de votre panier n’est plus disponible dans le catalogue. Retirez-le avant de commander.", "warning");
+      return false;
+    }
+    const state = productStockState(currentProduct);
+    if (state.key === "inactive") {
+      showProductStockAlert(currentProduct, state);
+      return false;
+    }
+    if (state.stock === null) {
+      showProductStockAlert(currentProduct, state);
+      return false;
+    }
+    const unreservedQuantity = lines.reduce((sum, item) => {
+      const qty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+      return sum + Math.max(0, qty - reservedQuantityForCartItem(item));
+    }, 0);
+    // Le stock du catalogue a déjà été décrémenté pour les lignes réservées.
+    // On ne compare donc pas la quantité totale du panier au stock restant.
+    if (unreservedQuantity > state.stock) {
+      showToast(`Stock insuffisant pour « ${currentProduct.name} » : ${state.stock} unité(s) restante(s) pour ${unreservedQuantity} unité(s) encore à réserver. Réduisez la quantité ou retirez l’article.`, "warning");
+      return false;
+    }
+    if (unreservedQuantity > 0) reservationsToMake.push({ product: currentProduct, lines, stock: state.stock, quantity: unreservedQuantity });
+  }
+  // Deuxième passe : toutes les vérifications ont réussi, on réserve ce qui
+  // manquait dans un ancien panier puis on persiste ensemble les changements.
+  reservationsToMake.forEach(({ product, lines, stock, quantity }) => {
+    product.stock = stock - quantity;
+    lines.forEach((item) => {
+      item.stockReservedQty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+    });
+  });
+  if (reservationsToMake.length) {
+    localStorage.setItem("etokiana-cart", JSON.stringify(cart));
+    persistReservedInventoryChanges();
+  }
+  return true;
 }
 function renderProductStock(product) {
-  const stock = productStock(product);
+  const stockState = productStockState(product);
+  const stock = stockState.stock;
   const label = document.querySelector("#product-modal-stock");
   const badge = document.querySelector("#product-modal-badge");
   const addButton = document.querySelector("#product-modal-add");
   const qty = document.querySelector("#product-modal-quantity");
   const minus = document.querySelector("#pd-qty-minus");
   const plus = document.querySelector("#pd-qty-plus");
-  let state = "ok";
-  let text = "En stock";
-  const inactive = product.active === false || product.status === "inactive";
-  if (stock === 0) {
-    state = "out";
-    text = "Épuisé";
-  } else if (inactive) {
-    state = "out";
-    text = "Produit inactif";
-  } else if (stock !== null && stock <= 5) {
-    state = "low";
-    text = `Plus que ${stock} en stock`;
-  }
+  const state = stockState.key;
+  const text = stockState.label;
   label.className = `pd-stock pd-stock-${state}`;
-  const stockIcon = state === "out"
+  const stockIcon = state === "out" || state === "inactive"
     ? `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.4"/><path d="m7 7 6 6m0-6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`
-    : state === "low"
+    : state === "low" || state === "unknown"
       ? `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M10 2.8 18 17H2z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M10 7v4.5m0 2.2v.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`
       : `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.4"/><path d="m6.5 10 2.2 2.2 4.7-4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   label.innerHTML = `${stockIcon}<span>${text}</span>`;
   badge.hidden = false;
-  badge.textContent = state === "out" ? "Indisponible" : state === "low" ? "Stock limité" : "Disponible";
-  badge.className = `pd-badge pd-badge-${state}`;
+  badge.textContent = stockState.label;
+  badge.className = `pd-badge pd-badge-${state === "inactive" ? "out" : state}`;
   const priceAvailability = document.querySelector("#product-modal-price-availability");
   if (priceAvailability) {
-    priceAvailability.classList.toggle("is-out", state === "out");
+    priceAvailability.classList.toggle("is-out", !stockState.canPurchase);
     priceAvailability.classList.toggle("is-low", state === "low");
     const priceAvailabilityLabel = priceAvailability.querySelector("span");
-    if (priceAvailabilityLabel) priceAvailabilityLabel.textContent = state === "out" ? "Indisponible" : "Disponible";
+    if (priceAvailabilityLabel) priceAvailabilityLabel.textContent = stockState.label;
   }
-  const out = state === "out";
-  addButton.disabled = out;
-  qty.disabled = out;
-  minus.disabled = out;
-  plus.disabled = out;
-  addButton.querySelector("span").textContent = out
-    ? "Produit indisponible"
-    : "Ajouter au panier";
+  // Le bouton reste activable visuellement pour permettre d'expliquer la rupture
+  // au clic, mais la fonction d'ajout vérifie à nouveau le stock avant toute action.
+  addButton.disabled = false;
+  addButton.setAttribute("aria-disabled", String(!stockState.canPurchase));
+  qty.disabled = !stockState.canPurchase;
+  minus.disabled = !stockState.canPurchase;
+  plus.disabled = !stockState.canPurchase;
+  addButton.querySelector("span").textContent = state === "out"
+    ? "Stock épuisé"
+    : state === "inactive"
+      ? "Produit indisponible"
+      : state === "unknown"
+        ? "Stock à confirmer"
+        : "Ajouter au panier";
+  addButton.classList.toggle("is-unavailable", !stockState.canPurchase);
   qty.max = stock !== null && stock > 0 ? String(stock) : "99";
   updateProductVariantPurchaseState();
 }
@@ -2715,14 +2948,7 @@ function renderProductDescription(product) {
 }
 function productMetaItems(product) {
   const stock = productStock(product);
-  const state =
-    stock === 0
-      ? "Épuisé"
-      : product.active === false || product.status === "inactive"
-        ? "Inactif"
-        : stock !== null && stock <= 3
-          ? "Stock faible"
-          : "Disponible";
+  const state = productStockState(product).label;
   const dateLabel = (value) => {
     if (!value) return "Non renseignée";
     const d = new Date(value);
@@ -2746,7 +2972,7 @@ function productMetaItems(product) {
     ["Référence produit", window.getProductReference(product)],
     ["Vendeur / propriétaire", sellerLabel(product)],
     ["Publié par (créateur de la fiche)", productCreatorName(product)],
-    ["Disponibilité", stock === 0 || product.active === false || product.status === "inactive" ? "Indisponible" : "Disponible"],
+    ["Disponibilité", state],
     ["Quantité en stock", stock === null ? "Non renseignée" : `${stock} unité(s)`],
     ["État du produit", state],
     ["Date d’intégration", dateLabel(created)],
@@ -2790,11 +3016,16 @@ function updateProductVariantPurchaseState() {
   const availableSizes = productOptionList(selectedProduct.availableSizes || selectedProduct.sizes);
   const missingColor = availableColors.length > 1 && !selectedProductOptions.color;
   const missingSize = availableSizes.length > 1 && !selectedProductOptions.size;
-  const unavailable = productStock(selectedProduct) === 0 || selectedProduct.active === false || selectedProduct.status === "inactive";
-  button.disabled = unavailable || missingColor || missingSize;
+  const stockState = productStockState(selectedProduct);
+  const unavailable = !stockState.canPurchase;
+  const missingOptions = missingColor || missingSize;
+  // En cas de rupture, garder le bouton cliquable afin d'afficher une alerte claire.
+  button.disabled = !unavailable && missingOptions;
+  button.setAttribute("aria-disabled", String(unavailable || missingOptions));
+  button.classList.toggle("is-unavailable", unavailable);
   const label = button.querySelector("span");
   if (label) label.textContent = unavailable
-    ? "Produit indisponible"
+    ? stockState.key === "out" ? "Stock épuisé" : stockState.key === "unknown" ? "Stock à confirmer" : "Produit indisponible"
     : missingColor && missingSize
       ? "Choisir couleur et taille"
       : missingColor
@@ -2858,12 +3089,10 @@ function openProductDetail(product, opts = {}) {
   renderProductStock(product);
   const availability = document.querySelector("#product-modal-availability");
   if (availability) {
-    const stock = productStock(product);
-    const inactive = product.active === false || product.status === "inactive";
-    const state = stock === 0 || inactive ? "out" : stock !== null && stock <= 5 ? "low" : "ok";
-    availability.textContent = state === "out" ? "Indisponible" : "Disponible";
-    availability.classList.toggle("is-out", state === "out");
-    availability.classList.toggle("is-low", state === "low");
+    const stockState = productStockState(product);
+    availability.textContent = stockState.label;
+    availability.classList.toggle("is-out", !stockState.canPurchase);
+    availability.classList.toggle("is-low", stockState.key === "low");
   }
   renderProductDescription(product);
   openModal(productModal);
@@ -2926,12 +3155,17 @@ productGrid.addEventListener("click", (event) => {
       (item) => String(item.id) === String(addButton.dataset.add),
     );
     if (!product) return;
+    const stockState = productStockState(product);
+    if (!stockState.canPurchase) {
+      showProductStockAlert(product, stockState);
+      return;
+    }
+    if (!ensureSignedInForPurchase()) return;
     const hasOptions = productOptionList(product.availableColors || product.colors).length > 0
       || productOptionList(product.availableSizes || product.sizes).length > 0;
     if (hasOptions) {
       openProductDetail(product);
-    } else {
-      addToCart(product);
+    } else if (addToCart(product)) {
       showToast(`${product.name} a rejoint votre panier`);
     }
   }
@@ -2956,10 +3190,51 @@ cartItems.addEventListener("click", (event) => {
   const key = action.dataset.lineId || action.dataset.increase || action.dataset.decrease || action.dataset.remove;
   const item = cart.find((product) => (product.cartLineId || cartLineKey(product.id, product.selectedColor, product.selectedSize)) === key);
   if (!item) return;
-  if (action.dataset.increase) item.quantity += 1;
-  if (action.dataset.decrease) item.quantity = Math.max(1, item.quantity - 1);
-  if (action.dataset.remove) cart = cart.filter((product) => (product.cartLineId || cartLineKey(product.id, product.selectedColor, product.selectedSize)) !== key);
+  let inventoryChanged = false;
+  if (action.dataset.increase) {
+    if (!ensureSignedInForPurchase()) return;
+    const currentProduct = products.find((product) => String(product.id) === String(item.id));
+    if (!currentProduct) { showToast("Ce produit n’est plus disponible dans le catalogue.", "warning"); return; }
+    const stockState = productStockState(currentProduct);
+    if (!stockState.canPurchase) { showProductStockAlert(currentProduct, stockState); return; }
+    const stock = productStock(currentProduct);
+    if (stock === null) { showProductStockAlert(currentProduct, stockState); return; }
+    const relatedLines = cart.filter((line) => String(line.id) === String(currentProduct.id));
+    const pendingQuantity = relatedLines.reduce((sum, line) => {
+      const qty = Math.max(0, Math.floor(Number(line.quantity) || 0));
+      return sum + Math.max(0, qty - reservedQuantityForCartItem(line));
+    }, 0);
+    const quantityToReserve = pendingQuantity + 1;
+    if (quantityToReserve > stock) {
+      showToast(`Stock insuffisant pour « ${currentProduct.name} » : ${stock} unité(s) restante(s), ${quantityToReserve} nécessaire(s) pour ce panier.`, "warning");
+      return;
+    }
+    currentProduct.stock = stock - quantityToReserve;
+    relatedLines.forEach((line) => { line.stockReservedQty = Math.max(0, Math.floor(Number(line.quantity) || 0)); });
+    item.quantity = Math.max(0, Number(item.quantity) || 0) + 1;
+    item.stockReservedQty = item.quantity;
+    inventoryChanged = true;
+  }
+  if (action.dataset.decrease && Number(item.quantity) > 1) {
+    const reserved = reservedQuantityForCartItem(item);
+    const unreserved = Math.max(0, Math.floor(Number(item.quantity) || 0) - reserved);
+    item.quantity = Math.max(1, Math.floor(Number(item.quantity) || 1) - 1);
+    if (unreserved === 0 && reserved > 0) {
+      restoreProductStock(item.id, 1);
+      item.stockReservedQty = reserved - 1;
+      inventoryChanged = true;
+    }
+  }
+  if (action.dataset.remove) {
+    const reserved = reservedQuantityForCartItem(item);
+    if (reserved > 0) {
+      restoreProductStock(item.id, reserved);
+      inventoryChanged = true;
+    }
+    cart = cart.filter((product) => (product.cartLineId || cartLineKey(product.id, product.selectedColor, product.selectedSize)) !== key);
+  }
   saveCart();
+  if (inventoryChanged) persistReservedInventoryChanges();
 });
 document
   .querySelector("#category-family-filter")
@@ -3903,15 +4178,17 @@ document.querySelector("#cart-toggle").addEventListener("click", openCart);
 document.querySelector("#cart-close").addEventListener("click", closeCart);
 drawerBackdrop.addEventListener("click", closeCart);
 document.querySelector("#checkout-button").addEventListener("click", () => {
-  if (cart.length) {
-    // Mettre à jour le total avant de passer à l'étape paiement.
-    updatePaymentTotal();
-    // Fermer le tiroir panier et son fond avant d'ouvrir le choix du paiement.
-    closeCart();
-    openModal(paymentModal);
-  } else {
+  if (!cart.length) {
     showToast("Ajoutez un article avant de commander.");
+    return;
   }
+  if (!ensureSignedInForPurchase()) return;
+  if (!validateCartStock()) return;
+  // Mettre à jour le total avant de passer à l'étape paiement.
+  updatePaymentTotal();
+  // Fermer le tiroir panier et son fond avant d'ouvrir le choix du paiement.
+  closeCart();
+  openModal(paymentModal);
 });
 document
   .querySelector("#newsletter-form")
@@ -4011,6 +4288,7 @@ document
         order.cancelReason = reason;
         order.cancelledPreviousStatus = previousStatus;
         order.cancelledBy = { name: currentUser.name || "Client", email: currentUser.email, role: currentUser.role };
+        restockCancelledOrderInventory(order);
         localStorage.setItem("etokiana-orders", JSON.stringify(savedOrders));
         orders = savedOrders;
         try { addNotification("admin@etokiana.fr", `Le client ${order.buyerName || order.buyerId} a annulé la commande #${order.id}. Motif : ${reason}.`); } catch (_) {}
@@ -4239,6 +4517,9 @@ selectPaymentMethod(
 );
 document.querySelector("#payment-form").addEventListener("submit", (event) => {
   event.preventDefault();
+  if (!cart.length) { showToast("Votre panier est vide."); closeModal(paymentModal); return; }
+  if (!ensureSignedInForPurchase()) return;
+  if (!validateCartStock()) { closeModal(paymentModal); openCart(); return; }
   const subtotal = cartSubtotal();
   const delivery = shippingFee();
   const total = subtotal + delivery;
@@ -4258,9 +4539,10 @@ document.querySelector("#payment-form").addEventListener("submit", (event) => {
     shipping: delivery,
     total,
     commission,
-    items: cart.map((item) => ({ ...item, salePrice: effectivePrice(item) })),
+    items: cart.map(({ stockReservedQty, ...item }) => ({ ...item, salePrice: effectivePrice(item) })),
     date: new Date().toISOString(),
     status: "Nouvelle commande",
+    inventoryDeductedAtCart: true,
   };
   orders.push(order);
   localStorage.setItem("etokiana-orders", JSON.stringify(orders));
@@ -4296,7 +4578,10 @@ document.querySelector("#payment-form").addEventListener("submit", (event) => {
   showToast(`Commande confirmée. Total : ${euro(total)}`);
 });
 document.querySelector("#product-modal-add").addEventListener("click", () => {
-  if (!selectedProduct || productStock(selectedProduct) === 0) return;
+  if (!selectedProduct) return;
+  const stockState = productStockState(selectedProduct);
+  if (!stockState.canPurchase) { showProductStockAlert(selectedProduct, stockState); return; }
+  if (!ensureSignedInForPurchase()) return;
   const availableColors = productOptionList(selectedProduct.availableColors || selectedProduct.colors);
   const availableSizes = productOptionList(selectedProduct.availableSizes || selectedProduct.sizes);
   if ((availableColors.length > 1 && !selectedProductOptions.color) || (availableSizes.length > 1 && !selectedProductOptions.size)) {
@@ -4307,7 +4592,7 @@ document.querySelector("#product-modal-add").addEventListener("click", () => {
     1,
     Number.parseInt(document.querySelector("#product-modal-quantity").value, 10) || 1,
   );
-  addToCart(selectedProduct, quantity, selectedProductOptions);
+  if (!addToCart(selectedProduct, quantity, selectedProductOptions)) return;
   closeModal(productModal);
   const choiceSummary = [selectedProductOptions.color, selectedProductOptions.size].filter(Boolean).join(" · ");
   showToast(`${selectedProduct.name}${choiceSummary ? ` (${choiceSummary})` : ""} ajouté au panier`);
@@ -4463,7 +4748,7 @@ window.openProductFormForEdit = function (productId) {
   document.querySelector("#new-product-name").value = product.name || "";
   document.querySelector("#new-product-category").value = JSON.stringify(product.categoryPath || [product.category]);
   document.querySelector("#new-product-price").value = String(Math.round((Number(product.price) || 0) * currencyRate));
-  document.querySelector("#new-product-stock").value = String(Number(product.stock) || 0);
+  document.querySelector("#new-product-stock").value = product.stock === "" || product.stock == null || !Number.isFinite(Number(product.stock)) ? "" : String(Math.max(0, Number(product.stock)));
   document.querySelector("#new-product-discount").value = String(Number(product.discount) || 0);
   document.querySelector("#new-product-image").value = product.image || "";
   document.querySelector("#new-product-description").value = product.description || "";
@@ -4487,12 +4772,12 @@ window.deleteManagedProduct = function (productId) {
   const productCategory = Array.isArray(product.categoryPath) && product.categoryPath.length
     ? product.categoryPath.join(" / ")
     : product.category || "Sans catégorie";
-  const productStock = Number.isFinite(Number(product.stock)) ? Number(product.stock) : 0;
+  const productStock = product.stock === "" || product.stock == null || !Number.isFinite(Number(product.stock)) ? null : Math.max(0, Number(product.stock));
   const summaryHtml = [
     ["Produit", productName],
     ["Référence", productReference],
     ["Catégorie", productCategory],
-    ["Stock actuel", `${productStock} unité(s)`],
+    ["Stock actuel", productStock === null ? "Non renseigné" : `${productStock} unité(s)`],
   ].map(([label, value]) => `<div class="etk-premium-summary-row"><strong>${escapeDialogHtml(label)}</strong><span>${escapeDialogHtml(value)}</span></div>`).join("")
     + '<p class="etk-premium-note"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> La suppression est définitive. Le produit sera retiré du catalogue et cette action ne pourra pas être annulée.</p>';
 
@@ -4871,6 +5156,7 @@ document.querySelector("#admin-logout").addEventListener("click", () => {
 updateProfileButton();
 renderCategoryFamilyOptions();
 initializeCatalogueDropdowns();
+initializeCartStockReservations();
 renderProducts();
 renderCart();
 
